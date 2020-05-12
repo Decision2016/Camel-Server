@@ -7,7 +7,6 @@
 
 
 class camel_server {
-
 };
 
 

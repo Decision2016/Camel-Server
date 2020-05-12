@@ -8,6 +8,7 @@
 #include <cstring>
 #include <cstdio>
 #include <ctime>
+#include <cstdarg>
 
 enum Status {
     Success,
@@ -18,10 +19,10 @@ enum Status {
 
 class Logger {
 public:
-    void success(char *sMsg, bool saveToFile = true);
-    void error(char *sMsg, bool saveToFile = true);
-    void info(char *sMsg, bool saveToFile = true);
-    void warning(char *sMsg, bool saveToFile = true);
+    void success(char *__format, ...);
+    void error(char *__format, ...);
+    void info(char *__format, ...);
+    void warning(char *__format, ...);
     Logger(char *cLogPath);
     Logger();
     ~Logger();
@@ -32,8 +33,9 @@ private:
     char *logPath = nullptr;
 
     bool fnWriteFile(const char* output);
-    void fnBaseLogFunction(enum Status status, char *sMsg, bool saveToFile);
+    void fnBaseLogFunction(enum Status status, char *__format, ...);
 
+    static char* fnGetDate();
     static const char* fnGetHeader(enum Status status);
     static char* fnGetTimeString();
     static void fnJointString(char* destination,const char *headString, char* timeString, char* msgString);

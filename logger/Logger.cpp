@@ -4,31 +4,46 @@
 
 #include "Logger.h"
 
-void Logger::fnBaseLogFunction(enum Status status, char *sMsg, bool saveToFile) {
+void Logger::fnBaseLogFunction(enum Status status, char *__format, ...) {
     const char* header = fnGetHeader(status);
     char *nowTime = fnGetTimeString();
     char destination[dStringLength];
-    fnJointString(destination, header, nowTime, sMsg);
-    if(saveToFile) {
+    char log[1024];
+    va_list args;
+    va_start(args, __format);
+    sprintf(log, __format, args);
+    va_end(args);
+    fnJointString(destination, header, nowTime, log);
         fnWriteFile(destination);
-    }
     printf("%s\n", destination);
 }
 
-void Logger::error(char *sMsg, bool saveToFile) {
-    fnBaseLogFunction(Error, sMsg, saveToFile);
+void Logger::error(char *__format, ...) {
+    va_list args;
+    va_start(args, __format);
+    fnBaseLogFunction(Error, __format, args);
+    va_end(args);
 }
 
-void Logger::success(char *sMsg, bool saveToFile) {
-    fnBaseLogFunction(Success, sMsg, saveToFile);
+void Logger::success(char *__format, ...) {
+    va_list args;
+    va_start(args, __format);
+    fnBaseLogFunction(Success, __format, args);
+    va_end(args);
 }
 
-void Logger::info(char *sMsg, bool saveToFile) {
-    fnBaseLogFunction(Info, sMsg, saveToFile);
+void Logger::info(char *__format, ...) {
+    va_list args;
+    va_start(args, __format);
+    fnBaseLogFunction(Info, __format, args);
+    va_end(args);
 }
 
-void Logger::warning(char *sMsg, bool saveToFile) {
-    fnBaseLogFunction(Warning, sMsg, saveToFile);
+void Logger::warning(char *__format, ...) {
+    va_list args;
+    va_start(args, __format);
+    fnBaseLogFunction(Warning, __format, args);
+    va_end(args);
 }
 
 const char* Logger::fnGetHeader(enum Status status) {
@@ -69,3 +84,8 @@ Logger::Logger(char *cLogPath) : logPath(cLogPath) {}
 bool Logger::fnWriteFile(const char *output) {
     printf("save\n");
 }
+
+char* Logger::fnGetDate() {
+
+}
+

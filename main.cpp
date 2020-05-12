@@ -1,10 +1,14 @@
 #include <iostream>
 
 #include <unistd.h>
+#include <sys/socket.h>
+#include <thread>
 
 #include "logger/Logger.h"
 
 const int PATH_SIZE = 255;
+
+
 
 int main(int argc, char **argv) {
     char workPath[PATH_SIZE];
