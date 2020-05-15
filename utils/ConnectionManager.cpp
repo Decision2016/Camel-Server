@@ -2,8 +2,9 @@
 // Created by Decision on 2020/5/12.
 //
 
-#include <netinet/in.h>
+
 #include "ConnectionManager.h"
+#include "../camel_server.h"
 
 
 ConnectionManager::ConnectionManager(int _port, RSA *_rsa, Logger *_logger) :port(_port), connectRSA(_rsa), logger(_logger){}
@@ -36,46 +37,54 @@ void ConnectionManager::startConnection() {
 
     while (true) {
         if ((connectfd = accept(listenfd, (sockaddr*)nullptr, nullptr)) == -1) {
-            if (checkTimeout()) break;
+            if (checkTimeout()) {
+                logger -> info("Connect timeout on port %d, close socket thread.", port);
+                break;
+            }
             else continue;
         }
         n = recv(connectfd, buffer, 4096, 0);
         getStatusCode(statusCode, buffer);
-        if (statusCode == 110) {
-            if (authUser(listenfd)) {
+        if (statusCode == SECOND_CONNECT) {
+            if (authUser(&buffer[2])) {
+                logger -> success("User authorized successful, start file transport on port %d.", port);
                 fileManage(listenfd);
             }
             else {
-                // todo: return refuse information
-
+                logger->warning("User authorized failed.");
             }
         }
-        lastTimestamp = time(nullptr);
-    }
-
-}
-
-bool ConnectionManager::authUser(const int &listen_fd) {
-    int connect_fd;
-    int n, statusCode;
-    char buffer[4096];
-    while (true) {
-        if ((connect_fd = accept(listen_fd, (sockaddr*) nullptr, nullptr)) == -1) {
-            if (checkTimeout()) break;
-            else continue;
-        }
-        n = recv(connect_fd, buffer, 4096, 0);
-        getStatusCode(statusCode, buffer);
-        if (statusCode == 211) {
-        }
         else {
-
+            logger -> warning("Received a connect request, but status code is error.");
         }
         lastTimestamp = time(nullptr);
     }
+    close(listenfd);
 }
 
-bool ConnectionManager::fileManage(const int &listen_fd) {
+void ConnectionManager::setUserInfo(char *_username, char *_password) {
+    strcpy(username, _username);
+    strcpy(password, _password);
+}
+
+bool ConnectionManager::authUser(const char *buffer) {
+    char _username[16], _password[16];
+    unsigned char plainText[4096];
+    int length = strlen(buffer);
+    int result = RSA_private_decrypt(length, (unsigned char*) buffer, plainText, connectRSA, RSA_PKCS1_PADDING);
+    memcpy(_username, plainText, 16);
+    memcpy(_password, &plainText[16], 16);
+    memcpy(aesKey, &plainText[1296], 256);
+    BIO *keybio = BIO_new_mem_buf((unsigned char*) &plainText[32], 1024);
+    userKey = RSA_new();
+    userKey = PEM_read_bio_RSA_PUBKEY(keybio, &userKey, nullptr, nullptr);
+    BIO_free_all(keybio);
+    // todo: 报错处理
+    if(strcmp(username, _username) == 0 && strcmp(password, _password) == 0) return true;
+    else return false;
+}
+
+void ConnectionManager::fileManage(const int &listen_fd) {
     int connect_fd;
     int statusCode, length;
     char buffer[4096];
@@ -83,6 +92,31 @@ bool ConnectionManager::fileManage(const int &listen_fd) {
         if ((connect_fd = accept(listen_fd, (sockaddr*) nullptr, nullptr)) == -1) {
             if (checkTimeout()) break;
             else continue;
+        }
+        length = recv(connect_fd, buffer, 4096, 0);
+        getStatusCode(statusCode, buffer);
+        switch (statusCode) {
+            case REFRESH_DIR:
+
+                break;
+            case GOTO_DIR:
+
+                break;
+            case BACK_DIR:
+
+                break;
+            case DELETE_DIR:
+
+                break;
+            case CREATE_DIR:
+
+                break;
+            case CLOSE_CONNECT:
+
+                break;
+            case POST_FILE:
+
+                break;
         }
     }
 }
