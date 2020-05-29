@@ -35,10 +35,12 @@ private:
     bool fnWriteFile(const char* output);
     void fnBaseLogFunction(enum Status status, char *__format, ...);
 
-    static char* fnGetDate();
+    static void fnGetFileName(char* dateString);
+    static void createDir();
     static const char* fnGetHeader(enum Status status);
     static char* fnGetTimeString();
     static void fnJointString(char* destination,const char *headString, char* timeString, char* msgString);
+    static int getLogLength(const char* log);
 };
 
 

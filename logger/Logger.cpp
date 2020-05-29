@@ -4,6 +4,9 @@
 
 #include "Logger.h"
 
+#include <cstdlib>
+#include <unistd.h>
+
 void Logger::fnBaseLogFunction(enum Status status, char *__format, ...) {
     const char* header = fnGetHeader(status);
     char *nowTime = fnGetTimeString();
@@ -15,7 +18,7 @@ void Logger::fnBaseLogFunction(enum Status status, char *__format, ...) {
     va_end(args);
     fnJointString(destination, header, nowTime, log);
         fnWriteFile(destination);
-    printf("%s\n", destination);
+    printf("%s", destination);
 }
 
 void Logger::error(char *__format, ...) {
@@ -64,6 +67,7 @@ void Logger::fnJointString(char *destination, const char *headString, char *time
     strcat(destination, timeString);
     strcat(destination, "]");
     strcat(destination, msgString);
+    strcat(destination, "\n");
 }
 
 char* Logger::fnGetTimeString() {
@@ -82,10 +86,34 @@ Logger::~Logger() {
 Logger::Logger(char *cLogPath) : logPath(cLogPath) {}
 
 bool Logger::fnWriteFile(const char *output) {
-    printf("save\n");
+    char fileName[30], path[200];
+    memset(path, 0, sizeof(path));
+    memset(fileName, 0, sizeof(fileName));
+    fnGetFileName(fileName);
+    createDir();
+    strcat(path, "./log/");
+    strcat(path, fileName);
+    FILE* fp = fopen(path, "a");
+    fwrite(output, getLogLength(output), 1, fp);
+    fclose(fp);
 }
 
-char* Logger::fnGetDate() {
-
+void Logger::fnGetFileName(char* dateString) {
+    time_t now = time(nullptr);
+    tm *gmtm = gmtime(&now);
+    sprintf(dateString, "%d-%d-%d", gmtm->tm_year + 1900, gmtm->tm_mon + 1, gmtm->tm_mday);
+    strcat(dateString, ".log");
 }
 
+void Logger::createDir() {
+    if (access("./log", F_OK) >= 0) return ;
+    else system("mkdir log");
+}
+
+
+int Logger::getLogLength(const char *log) {
+    for(int i = 0; i < 1024 ;i++) {
+        if (log[i] == '\n') return i + 1;
+    }
+    return 1024;
+}

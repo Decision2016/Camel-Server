@@ -7,6 +7,7 @@
 
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
+#include <openssl/aes.h>
 #include <sys/socket.h>
 #include <cstring>
 #include <ctime>
@@ -42,12 +43,13 @@ private:
     int port;
     long long lastTimestamp;
     RSA *connectRSA, *userKey;
-    char aesKey[32];
+    AES_KEY aesKey;
     Logger *logger;
 
     bool authUser(const char *buffer);
     void fileManage(const int &listen_fd);
     void getFile(const int &listen_fd);
+    void recvFile();
     inline bool checkTimeout();
     static void getStatusCode(int &statusCode, const char* buffer);
     static void putStatusCode(const int &statusCode, char &firstChar, char &secondChar);

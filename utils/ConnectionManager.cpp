@@ -74,14 +74,14 @@ bool ConnectionManager::authUser(const char *buffer) {
     int result = RSA_private_decrypt(length, (unsigned char*) buffer, plainText, connectRSA, RSA_PKCS1_PADDING);
     memcpy(_username, plainText, 16);
     memcpy(_password, &plainText[16], 16);
-    memcpy(aesKey, &plainText[1296], 256);
+    if (strcmp(username, _username) != 0 || strcmp(password, _password) != 0) return false;
+    AES_set_encrypt_key(&plainText[1296], 256, &aesKey);
     BIO *keybio = BIO_new_mem_buf((unsigned char*) &plainText[32], 1024);
     userKey = RSA_new();
     userKey = PEM_read_bio_RSA_PUBKEY(keybio, &userKey, nullptr, nullptr);
     BIO_free_all(keybio);
     // todo: 报错处理
-    if(strcmp(username, _username) == 0 && strcmp(password, _password) == 0) return true;
-    else return false;
+    return true;
 }
 
 void ConnectionManager::fileManage(const int &listen_fd) {
