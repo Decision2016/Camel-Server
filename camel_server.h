@@ -11,6 +11,9 @@
 #include <thread>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <iostream>
+#include <arpa/inet.h>
+
 #include "./logger/Logger.h"
 #include "utils/ConnectionManager.h"
 
@@ -31,10 +34,13 @@ private:
     int maxThread;
     Logger *logger;
 
-    static void getStatusCode(int &statusCode, const char* buffer);
-    static void putStatusCode(const int &statusCode, char &firstChar, char &secondChar);
+    void packBuffer(unsigned char* _buffer, RSA* keyPair, int _port);
+
+    static void getStatusCode(int &statusCode, const unsigned char* buffer);
+    static void putStatusCode(const int &statusCode, unsigned char &firstChar, unsigned char &secondChar);
     static int chosePort();
     static bool checkPort(int port);
+    static void pushValue(unsigned char *destination, unsigned long long value, int bytes_len);
 };
 
 

@@ -4,10 +4,11 @@
 
 #include "FileTransport.h"
 
-FileTransport::FileTransport(AES_KEY _aesKey, int _port): aesKey(_aesKey), port(_port) {}
+FileTransport::FileTransport(AES_KEY _aesKey, int _port, Logger *_logger): aesKey(_aesKey), port(_port), logger(_logger) {}
 
-void FileTransport::startThread() {
-    int listen_fd, connect_fd, n, statuCode;
+void FileTransport::startThread(bool &thread_status) {
+    thread_status = true;
+    int listen_fd, connect_fd, n, statusCode;
     char buffer[4096];
     sockaddr_in socketServerStruct;
 
@@ -35,14 +36,14 @@ void FileTransport::startThread() {
     while(true) {
         if ((connect_fd = accept(listen_fd, (sockaddr*)nullptr, nullptr)) == -1) {
             if (checkTimeout()) {
-                logger -> info("Connect timeout on port %d, close file transport socket thread.", port);
+                logger -> info("File transport timeout on port %d, close file transport socket thread.", port);
                 break;
             }
             else continue;
         }
         n = recv(connect_fd, buffer, 4096, 0);
-        getStatusCode(statuCode, buffer);
-        switch (statuCode) {
+        getStatusCode(statusCode, buffer);
+        switch (statusCode) {
             case POST_FILE: {
                 break;
             }
@@ -53,12 +54,15 @@ void FileTransport::startThread() {
                 break;
             }
         }
+        close(connect_fd);
     }
+    close(listen_fd);
+    thread_status = false;
 }
 
 bool FileTransport::checkTimeout() {
     long long delta = time(nullptr) - lastTimestamp;
-    return delta >= MAX_TIME_WAITING;
+    return delta >= 600;
 }
 
 void FileTransport::getStatusCode(int &statusCode, const char *buffer) {

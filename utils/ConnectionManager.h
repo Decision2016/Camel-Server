@@ -13,7 +13,12 @@
 #include <ctime>
 #include <unistd.h>
 #include <netinet/in.h>
+#include <mutex>
+#include <thread>
+
 #include "../logger/Logger.h"
+#include <openssl/err.h>
+#include "FileTransport.h"
 
 static const int REFRESH_DIR = 200;
 static const int GOTO_DIR = 201;
@@ -22,16 +27,13 @@ static const int DELETE_DIR = 203;
 static const int CREATE_DIR = 204;
 static const int SECOND_CONNECT = 211;
 static const int CLOSE_CONNECT = 212;
-static const int POST_FILE = 220;
-static const int FILE_NOT_END = 221;
-static const int FILE_END = 222;
 static const int RENAME_DIR = 223;
 static const int DELETE_FILE = 224;
 static const int COPY_FILE = 225;
 static const int MOVE_FILE = 226;
 static const int FILE_DISCONNECT = 227;
-
-const int MAX_TIME_WAITING = 300;
+static const int REQUIRE_PORT = 240;
+static const int MAX_TIME_WAITING = 300;
 
 class ConnectionManager {
 public:
@@ -40,19 +42,21 @@ public:
     void startConnection();
 private:
     char username[16], password[16];
-    int port;
+    unsigned char token[32];
+    int port, filePort;
     long long lastTimestamp;
     RSA *connectRSA, *userKey;
     AES_KEY aesKey;
     Logger *logger;
+    bool thread_status = false;
 
-    bool authUser(const char *buffer);
+    bool authUser(const unsigned char *buffer);
     void fileManage(const int &listen_fd);
-    void getFile(const int &listen_fd);
-    void recvFile();
+
     inline bool checkTimeout();
-    static void getStatusCode(int &statusCode, const char* buffer);
-    static void putStatusCode(const int &statusCode, char &firstChar, char &secondChar);
+    static void getStatusCode(int &statusCode, const unsigned char* buffer);
+    static void putStatusCode(const int &statusCode, unsigned char &firstChar, unsigned char &secondChar);
+    static void generateToken(unsigned char* _token);
 };
 
 

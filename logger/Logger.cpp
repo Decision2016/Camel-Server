@@ -7,46 +7,49 @@
 #include <cstdlib>
 #include <unistd.h>
 
-void Logger::fnBaseLogFunction(enum Status status, char *__format, ...) {
+void Logger::fnBaseLogFunction(enum Status status, const char *log) {
     const char* header = fnGetHeader(status);
     char *nowTime = fnGetTimeString();
     char destination[dStringLength];
-    char log[1024];
-    va_list args;
-    va_start(args, __format);
-    sprintf(log, __format, args);
-    va_end(args);
     fnJointString(destination, header, nowTime, log);
-        fnWriteFile(destination);
+    fnWriteFile(destination);
     printf("%s", destination);
 }
 
 void Logger::error(char *__format, ...) {
+    char log[1024];
     va_list args;
     va_start(args, __format);
-    fnBaseLogFunction(Error, __format, args);
+    vsprintf(log, __format, args);
     va_end(args);
+    fnBaseLogFunction(Error, log);
 }
 
 void Logger::success(char *__format, ...) {
+    char log[1024];
     va_list args;
     va_start(args, __format);
-    fnBaseLogFunction(Success, __format, args);
+    vsprintf(log, __format, args);
     va_end(args);
+    fnBaseLogFunction(Success, log);
 }
 
 void Logger::info(char *__format, ...) {
+    char log[1024];
     va_list args;
     va_start(args, __format);
-    fnBaseLogFunction(Info, __format, args);
+    vsprintf(log, __format, args);
     va_end(args);
+    fnBaseLogFunction(Info, log);
 }
 
 void Logger::warning(char *__format, ...) {
+    char log[1024];
     va_list args;
     va_start(args, __format);
-    fnBaseLogFunction(Warning, __format, args);
+    vsprintf(log, __format, args);
     va_end(args);
+    fnBaseLogFunction(Warning, log);
 }
 
 const char* Logger::fnGetHeader(enum Status status) {
@@ -62,7 +65,7 @@ const char* Logger::fnGetHeader(enum Status status) {
     }
 }
 
-void Logger::fnJointString(char *destination, const char *headString, char *timeString, char *msgString) {
+void Logger::fnJointString(char *destination, const char *headString, char *timeString, const char *msgString) {
     strcpy(destination, headString);
     strcat(destination, timeString);
     strcat(destination, "]");
