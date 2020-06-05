@@ -14,6 +14,8 @@ void camel_server::startServer() {
     int length, statusCode;
     unsigned char recv_buffer[4096];
     unsigned char send_buffer[4096];
+
+    createWorkPath();
     sockaddr_in socketServerStruct, client_addr;
     socklen_t len = sizeof(client_addr);
 
@@ -58,6 +60,7 @@ void camel_server::startServer() {
 
             ConnectionManager cm(randPort,keyPair, logger);
             cm.setUserInfo(username, password);
+            cm.setWorkPath(path);
             std::thread tranThread(&ConnectionManager::startConnection, cm);
             tranThread.detach();
             putStatusCode(110, send_buffer[0], send_buffer[1]);
@@ -70,6 +73,13 @@ void camel_server::startServer() {
     close(listen_fd);
 }
 
+void camel_server::createWorkPath() {
+    int isCreated = mkdir(path, S_IRUSR | S_IWUSR | S_IXUSR | S_IRWXG | S_IRWXO);
+    if (! isCreated) {
+        logger -> info("Create new dir as work folder %s", path);
+    }
+}
+
 void camel_server::setPort(int _port) {
     port = _port;
 }
@@ -79,7 +89,7 @@ void camel_server::setMaxThread(int _maxThread) {
 }
 
 void camel_server::setWorkPath(char *_path) {
-    path = _path;
+    memcpy(path, _path, 32);
 }
 
 void camel_server::getStatusCode(int &statusCode, const unsigned char *buffer) {

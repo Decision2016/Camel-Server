@@ -13,6 +13,7 @@
 #include <netinet/in.h>
 #include <iostream>
 #include <arpa/inet.h>
+#include <sys/stat.h>
 
 #include "./logger/Logger.h"
 #include "utils/ConnectionManager.h"
@@ -30,12 +31,12 @@ public:
 private:
     char username[16], password[16];
     int port;
-    char *path;
+    char path[32] = "camel";
     int maxThread;
     Logger *logger;
 
     void packBuffer(unsigned char* _buffer, RSA* keyPair, int _port);
-
+    void createWorkPath();
     static void getStatusCode(int &statusCode, const unsigned char* buffer);
     static void putStatusCode(const int &statusCode, unsigned char &firstChar, unsigned char &secondChar);
     static int chosePort();

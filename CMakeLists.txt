@@ -10,6 +10,6 @@ add_library(common SHARED
         utils/FileManager.cpp
         utils/ConnectionManager.cpp
         utils/FileTransport.cpp
-        logger/Logger.cpp)
+        logger/Logger.cpp utils/FileInfo.cpp utils/FileInfo.h)
 
 target_link_libraries(Camel_Server common -lpthread -lssl -lcrypto)

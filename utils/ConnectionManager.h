@@ -15,7 +15,10 @@
 #include <netinet/in.h>
 #include <mutex>
 #include <thread>
+#include <string>
+#include <algorithm>
 
+#include "FileManager.h"
 #include "../logger/Logger.h"
 #include <openssl/err.h>
 #include "FileTransport.h"
@@ -40,23 +43,31 @@ public:
     ConnectionManager(int _port, RSA *_rsa, Logger *_logger);
     void setUserInfo(char *_username, char *_password);
     void startConnection();
+    void setWorkPath(const char* _path);
 private:
-    char username[16], password[16];
-    unsigned char token[32];
+    char username[16], password[16], path[32];
+    unsigned char token[32], key[32], iv[16];
     int port, filePort;
+    int dirLevel = 0;
     long long lastTimestamp;
-    RSA *connectRSA, *userKey;
+    RSA *connectRSA;
     AES_KEY aesKey;
     Logger *logger;
     bool thread_status = false;
+    std::string nowPath;
 
     bool authUser(const unsigned char *buffer);
-    void fileManage(const int &listen_fd);
-
-    inline bool checkTimeout();
+    void fileManage(const int &connect_fd);
+    void generateToken();
+    bool checkToken(unsigned char buffer[32]);
+    inline bool checkTimeout(long long timeLimit = MAX_TIME_WAITING);
+    inline void clearIv();
+    void aesEncrypt(const unsigned char* in, unsigned char* out, int len);
+    void aesDecrypt(const unsigned char* in, unsigned char* out, int len);
     static void getStatusCode(int &statusCode, const unsigned char* buffer);
     static void putStatusCode(const int &statusCode, unsigned char &firstChar, unsigned char &secondChar);
-    static void generateToken(unsigned char* _token);
+    static void sha256(unsigned char* buffer,unsigned char *out, int length);
+    static void pushValue(unsigned char *destination, unsigned long long value, int bytes_len);
 };
 
 
