@@ -11,6 +11,19 @@ ConnectionManager::ConnectionManager(int _port, RSA *_rsa, Logger *_logger) :por
     nowPath.clear();
 }
 
+ConnectionManager::~ConnectionManager() {
+    if (ft != nullptr) {
+        ft -> stopThread();
+        while (true) {
+            if (ft -> getCloseStatus()) {
+                delete ft;
+                logger -> success("File transport thread closed.");
+                break;
+            }
+        }
+    }
+}
+
 void ConnectionManager::startConnection() {
     int listen_fd, connect_fd, n, statusCode;
     unsigned char recv_buffer[4096], send_buffer[4096], buffer[4096];
@@ -54,11 +67,10 @@ void ConnectionManager::startConnection() {
                 generateToken();
                 logger -> success("Token generate successful, send to user.");
                 putStatusCode(112, send_buffer[0], send_buffer[1]);
-                AES_set_encrypt_key(key, 256, &aesKey);
-                clearIv();
-                AES_cbc_encrypt(token, buffer, 32, &aesKey, iv, AES_ENCRYPT);
-                memcpy(&send_buffer[2], buffer, 32);
-                send(connect_fd, send_buffer, 34, 0);
+                pushValue(buffer, filePort, 2);
+                memcpy(&buffer[2], token, 32);
+                aesEncrypt(&send_buffer[2], buffer, 34);
+                send(connect_fd, send_buffer, 50, 0);
                 fileManage(connect_fd);
                 break;
             }
@@ -101,9 +113,26 @@ bool ConnectionManager::checkToken(unsigned char buffer[32]) {
     return memcmp(buffer, token, 32);
 }
 
-void ConnectionManager::fileManage(const int &connect_fd) {
+void ConnectionManager::sendDirInfo(const int &connect_fd) {
     int statusCode, length;
+    int infoLength = 0, index = 0, nxtLen = 0;
     unsigned char recv_buffer[4096], send_buffer[4096];
+    const char *dirInfoBuffer;
+    unsigned char buffer[4096];
+    std::string dirInfo;
+    FileManager fm(nowPath, logger);
+    fm.getDirInfo(dirInfo);
+    dirInfoBuffer = dirInfo.c_str();
+
+    infoLength = dirInfo.length();
+    nxtLen = std::min(infoLength, 4080);
+    putStatusCode(100, send_buffer[0], send_buffer[1]);
+    memcpy(buffer, dirInfoBuffer, nxtLen);
+    pushValue(&send_buffer[2], nxtLen, 2);
+    aesEncrypt(buffer, &send_buffer[4], nxtLen);
+    send(connect_fd, send_buffer, 4096, 0);
+    index = nxtLen;
+    while (true) {
     while (true) {
         length = recv(connect_fd, recv_buffer, 4096, 0);
         if (length == -1) {
@@ -150,23 +179,52 @@ void ConnectionManager::fileManage(const int &connect_fd) {
                         aesEncrypt(buffer, &send_buffer[4], nxtLen);
                         send(connect_fd, send_buffer, 4096, 0);
                         index = nxtLen;
-                    }
-                    else {
-                        putStatusCode(504, send_buffer[0], send_buffer[1]);
-                        send(connect_fd, send_buffer, 2, 0);
-                    }
+                if (! FileManager(nxtPath, logger).checkDirExist()) {
+                    sendErrorCode(101, connect_fd);
+                }
+                else {
+                    nowPath = nxtPath;
+                    sendDirInfo(connect_fd);
                 }
                 break;
             }
-            case GOTO_DIR:
-
+            case BACK_DIR: {
+                logger->info("Back to upper directory.");
+                int pos = nowPath.find_last_of('/');
+                if (pos == 1) {
+                    sendErrorCode(101, connect_fd);
+                } else {
+                    nowPath = nowPath.substr(0, pos);
+                    sendDirInfo(connect_fd);
+                }
                 break;
-            case BACK_DIR:
-
+            }
+            /*
+             * 接收到该状态码用于删除目录，但是仅限于当前目录下目录
+             */
+            case DELETE_DIR: {
+                logger -> info("Receive enter directory request.");
+                getValue(&recv_buffer[34], len, 2);
+                aesDecrypt(&recv_buffer[36], buffer, len);
+                std::string nxtPath = nowPath + "/";
+                for (int i = 0;i < len;i++) nxtPath += buffer[i];
+                FileManager fm(nxtPath, logger);
+                if (! fm.checkDirExist()) {
+                    sendErrorCode(101, connect_fd);
+                }
+                else {
+                    /*
+                    if (fm.deleteDir()) {
+                        logger -> success("Delete directory %s successful.", buffer);
+                    }
+                    else {
+                        logger -> error("Some error occurred while delete directory.");
+                        sendErrorCode(101, connect_fd);
+                    }
+                    */
+                }
                 break;
-            case DELETE_DIR:
-
-                break;
+            }
             case CREATE_DIR:
 
                 break;
@@ -176,17 +234,13 @@ void ConnectionManager::fileManage(const int &connect_fd) {
             case POST_FILE:
 
                 break;
-            case REQUIRE_PORT: {
-                // todo: choose port
-                if (!thread_status) {
-                    FileTransport ft(aesKey, filePort, logger);
-                    std::thread childThread(std::bind(&FileTransport::startThread, &ft, thread_status));
-                    childThread.detach();
-                }
-                memset(recv_buffer, 0, sizeof(recv_buffer));
-                putStatusCode(150, recv_buffer[0], recv_buffer[1]);
-                recv_buffer[2] = char(filePort);
-                send(connect_fd, recv_buffer, 4096, 0);
+            case COPY_FILE:
+
+                break;
+            case MOVE_FILE:
+
+                break;
+            case DELETE_FILE: {
                 break;
             }
         }
@@ -252,4 +306,51 @@ void ConnectionManager::aesDecrypt(const unsigned char *in, unsigned char *out, 
     clearIv();
     AES_set_decrypt_key(key, 256, &aesKey);
     AES_cbc_encrypt(in, out, len, &aesKey, iv, AES_DECRYPT);
+}
+
+void ConnectionManager::getValue(unsigned char *from, unsigned long long &value, int bytes_len) {
+    value = 0;
+    for (int i = 0; i < bytes_len; i++) {
+        value = from[i] & 0xff;
+        value <<= 8;
+    }
+}
+
+void ConnectionManager::sendErrorCode(int statusCode, const int &connect_fd) {
+    unsigned char buffer[2];
+    putStatusCode(statusCode, buffer[0], buffer[1]);
+    send(connect_fd, buffer, 2, 0);
+}
+
+void ConnectionManager::startFileThread() {
+    filePort = chosePort();
+    ft = new FileTransport(key, filePort, logger);
+    ft -> setToken(token);
+    std::thread(&FileTransport::startThread, ft).detach();
+    logger -> success("File transport thread starting...");
+}
+
+int ConnectionManager::chosePort() {
+    srand(time(nullptr));
+    int randPort = 0;
+    while (!checkPort(randPort)) {
+        randPort = rand() % 65535;
+    }
+    return randPort;
+}
+
+bool ConnectionManager::checkPort(int port) {
+    if (port < 30000 || port > 65535) return false;
+    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    sockaddr_in sin;
+    memset(&sin, 0, sizeof(0));
+    sin.sin_family = AF_INET;
+    sin.sin_port = port;
+    sin.sin_addr.s_addr = htonl(INADDR_ANY);
+    if (bind(socket_fd, (sockaddr*) &sin, sizeof(sockaddr)) < 0) {
+        close(socket_fd);
+        return false;
+    }
+    close(socket_fd);
+    return true;
 }

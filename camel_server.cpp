@@ -61,7 +61,7 @@ void camel_server::startServer() {
             ConnectionManager cm(randPort,keyPair, logger);
             cm.setUserInfo(username, password);
             cm.setWorkPath(path);
-            std::thread tranThread(&ConnectionManager::startConnection, cm);
+            std::thread tranThread(&ConnectionManager::startConnection, &cm);
             tranThread.detach();
             putStatusCode(110, send_buffer[0], send_buffer[1]);
             packBuffer(&send_buffer[2], keyPair, randPort);

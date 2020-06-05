@@ -21,6 +21,9 @@ public:
      * 在读取文件列表信息成功时返回true， 否则返回false
      */
     bool getDirInfo(std::string &infoString);
+    bool checkDirExist();
+    bool deleteDir();
+
 
 private:
     std::string path;

@@ -20,13 +20,18 @@ static const int FILE_END = 222;
 
 class FileTransport {
 public:
-    void startThread(bool &thread_status);
-    FileTransport(AES_KEY _aesKey, int _port, Logger *_logger);
+    FileTransport(const unsigned char* _key, int _port, Logger *_logger);
+    void stopThread();
+    void startThread();
+    bool getCloseStatus();
+    void setToken(unsigned char* buffer);
 private:
     AES_KEY aesKey;
+    unsigned char key[32], token[32];
     int port;
     long long lastTimestamp;
     Logger *logger;
+    bool threadStatus, closeStatus;
     inline bool checkTimeout();
     void static getStatusCode(int &statusCode, const char *buffer);
     void static putStatusCode(const int &statusCode, char &firstChar, char &secondChar);

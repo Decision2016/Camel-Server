@@ -4,10 +4,12 @@
 
 #include "FileTransport.h"
 
-FileTransport::FileTransport(AES_KEY _aesKey, int _port, Logger *_logger): aesKey(_aesKey), port(_port), logger(_logger) {}
+FileTransport::FileTransport(const unsigned char* _key, int _port, Logger *_logger): port(_port), logger(_logger) {
+    threadStatus = false;
+    memcpy(key, _key, 32);
+}
 
-void FileTransport::startThread(bool &thread_status) {
-    thread_status = true;
+void FileTransport::startThread() {
     int listen_fd, connect_fd, n, statusCode;
     char buffer[4096];
     sockaddr_in socketServerStruct;
@@ -34,6 +36,11 @@ void FileTransport::startThread(bool &thread_status) {
     logger -> info("Socket listener created successful on port %d in file transport thread.", port);
 
     while(true) {
+        if(threadStatus == true) {
+            logger -> info("file transport thread stopping.");
+            break;
+        }
+
         if ((connect_fd = accept(listen_fd, (sockaddr*)nullptr, nullptr)) == -1) {
             if (checkTimeout()) {
                 logger -> info("File transport timeout on port %d, close file transport socket thread.", port);
@@ -57,7 +64,7 @@ void FileTransport::startThread(bool &thread_status) {
         close(connect_fd);
     }
     close(listen_fd);
-    thread_status = false;
+    closeStatus = false;
 }
 
 bool FileTransport::checkTimeout() {
@@ -73,4 +80,16 @@ void FileTransport::getStatusCode(int &statusCode, const char *buffer) {
 void FileTransport::putStatusCode(const int &statusCode, char &firstChar, char &secondChar) {
     firstChar =  char((statusCode >> 8) & 0xff);
     secondChar =  char(statusCode & 0xff);
+}
+
+void FileTransport::stopThread() {
+    threadStatus = false;
+}
+
+void FileTransport::setToken(unsigned char *buffer) {
+    memcpy(token, buffer, 32);
+}
+
+bool FileTransport::getCloseStatus() {
+    return closeStatus;
 }

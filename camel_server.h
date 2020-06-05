@@ -27,7 +27,6 @@ public:
     void setPort(int _port);
     void setWorkPath(char *_path);
     void setMaxThread(int _maxThread);
-
 private:
     char username[16], password[16];
     int port;
@@ -39,9 +38,9 @@ private:
     void createWorkPath();
     static void getStatusCode(int &statusCode, const unsigned char* buffer);
     static void putStatusCode(const int &statusCode, unsigned char &firstChar, unsigned char &secondChar);
+    static void pushValue(unsigned char *destination, unsigned long long value, int bytes_len);
     static int chosePort();
     static bool checkPort(int port);
-    static void pushValue(unsigned char *destination, unsigned long long value, int bytes_len);
 };
 
 

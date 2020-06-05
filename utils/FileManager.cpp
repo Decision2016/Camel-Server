@@ -49,3 +49,9 @@ void FileManager::getExtName(std::string &extName,const std::string &fileName) {
 
     //todo: extName 筛选
 }
+
+bool FileManager::checkDirExist() {
+    DIR *dir;
+    if ((dir=opendir(path.c_str())) == nullptr) return false;
+    return true;
+}

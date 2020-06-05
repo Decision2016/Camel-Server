@@ -34,19 +34,22 @@ static const int RENAME_DIR = 223;
 static const int DELETE_FILE = 224;
 static const int COPY_FILE = 225;
 static const int MOVE_FILE = 226;
-static const int FILE_DISCONNECT = 227;
+static const int RENAME_FILE = 227;
+static const int FILE_DISCONNECT = 228;
 static const int REQUIRE_PORT = 240;
 static const int MAX_TIME_WAITING = 300;
 
 class ConnectionManager {
 public:
     ConnectionManager(int _port, RSA *_rsa, Logger *_logger);
+    ~ConnectionManager();
     void setUserInfo(char *_username, char *_password);
     void startConnection();
     void setWorkPath(const char* _path);
 private:
     char username[16], password[16], path[32];
     unsigned char token[32], key[32], iv[16];
+    int fileConnectFd;
     int port, filePort;
     int dirLevel = 0;
     long long lastTimestamp;
@@ -54,8 +57,10 @@ private:
     AES_KEY aesKey;
     Logger *logger;
     bool thread_status = false;
+    FileTransport *ft = nullptr;
     std::string nowPath;
 
+    void startFileThread();
     bool authUser(const unsigned char *buffer);
     void fileManage(const int &connect_fd);
     void generateToken();
@@ -64,10 +69,18 @@ private:
     inline void clearIv();
     void aesEncrypt(const unsigned char* in, unsigned char* out, int len);
     void aesDecrypt(const unsigned char* in, unsigned char* out, int len);
+    void sendErrorCode(int statusCode, const int& connect_fd);
+
+    void sendDirInfo(const int &connect_fd);
+    void enterDir(const int &connect_fd);
+
     static void getStatusCode(int &statusCode, const unsigned char* buffer);
     static void putStatusCode(const int &statusCode, unsigned char &firstChar, unsigned char &secondChar);
     static void sha256(unsigned char* buffer,unsigned char *out, int length);
+    static void getValue(unsigned char *from, unsigned long long &value, int bytes_len);
     static void pushValue(unsigned char *destination, unsigned long long value, int bytes_len);
+    static int chosePort();
+    static bool checkPort(int port);
 };
 
 
