@@ -69,7 +69,7 @@ void ConnectionManager::startConnection() {
                 putStatusCode(112, send_buffer[0], send_buffer[1]);
                 pushValue(buffer, filePort, 2);
                 memcpy(&buffer[2], token, 32);
-                aesEncrypt(&send_buffer[2], buffer, 34);
+                aesEncrypt(buffer, &send_buffer[2], 34);
                 send(connect_fd, send_buffer, 50, 0);
                 fileManage(connect_fd);
                 break;
@@ -110,7 +110,7 @@ bool ConnectionManager::authUser(const unsigned char *buffer) {
 bool ConnectionManager::checkToken(unsigned char buffer[32]) {
     unsigned char recv_token[32];
     aesDecrypt(buffer, recv_token, 32);
-    return memcmp(buffer, token, 32);
+    return memcmp(recv_token, token, 32);
 }
 
 void ConnectionManager::sendDirInfo(const int &connect_fd) {
@@ -125,6 +125,7 @@ void ConnectionManager::sendDirInfo(const int &connect_fd) {
     dirInfoBuffer = dirInfo.c_str();
 
     infoLength = dirInfo.length();
+    logger -> info("Debug info: infoLength = %d", infoLength);
     nxtLen = std::min(infoLength, 4080);
     putStatusCode(100, send_buffer[0], send_buffer[1]);
     memcpy(buffer, dirInfoBuffer, nxtLen);
@@ -133,6 +134,36 @@ void ConnectionManager::sendDirInfo(const int &connect_fd) {
     send(connect_fd, send_buffer, 4096, 0);
     index = nxtLen;
     while (true) {
+        length = recv(connect_fd, recv_buffer, 4096, 0);
+        if (length == -1) {
+            if (checkTimeout(10)) break;
+            continue;
+        }
+        lastTimestamp = time(nullptr);
+        getStatusCode(statusCode, recv_buffer);
+        if (statusCode != 402) break;
+        if (index != infoLength) {
+            nxtLen = std::min(infoLength - index, 4080);
+            putStatusCode(100, send_buffer[0], send_buffer[1]);
+            pushValue(&send_buffer[2], nxtLen, 2);
+            pushValue(send_buffer, nxtLen, 4);
+            memcpy(buffer, &dirInfoBuffer[index], nxtLen);
+            aesEncrypt(buffer, &send_buffer[4], nxtLen);
+            send(connect_fd, send_buffer, 4096, 0);
+            index = nxtLen;
+        }
+        else {
+            putStatusCode(504, send_buffer[0], send_buffer[1]);
+            send(connect_fd, send_buffer, 2, 0);
+            break;
+        }
+    }
+}
+
+void ConnectionManager::fileManage(const int &connect_fd) {
+    int statusCode, length;
+    unsigned long long len;
+    unsigned char recv_buffer[4096], send_buffer[4096], buffer[4096];
     while (true) {
         length = recv(connect_fd, recv_buffer, 4096, 0);
         if (length == -1) {
@@ -145,40 +176,18 @@ void ConnectionManager::sendDirInfo(const int &connect_fd) {
         lastTimestamp = time(nullptr);
         switch (statusCode) {
             case REFRESH_DIR: {
-                int infoLength = 0, index = 0, nxtLen = 0;
-                const char *dirInfoBuffer;
-                unsigned char buffer[4096];
-                std::string dirInfo;
-                FileManager fm(nowPath, logger);
-                fm.getDirInfo(dirInfo);
-                dirInfoBuffer = dirInfo.c_str();
-
-                infoLength = dirInfo.length();
-                nxtLen = std::min(infoLength, 4080);
-                putStatusCode(100, send_buffer[0], send_buffer[1]);
-                memcpy(buffer, dirInfoBuffer, nxtLen);
-                pushValue(&send_buffer[2], nxtLen, 2);
-                aesEncrypt(buffer, &send_buffer[4], nxtLen);
-                send(connect_fd, send_buffer, 4096, 0);
-                index = nxtLen;
-                while (true) {
-                    length = recv(connect_fd, recv_buffer, 4096, 0);
-                    if (length == -1) {
-                        if (checkTimeout(10)) break;
-                        continue;
-                    }
-                    lastTimestamp = time(nullptr);
-                    getStatusCode(statusCode, recv_buffer);
-                    if (statusCode != 402) break;
-                    if (index != infoLength) {
-                        nxtLen = std::min(infoLength - index, 4080);
-                        putStatusCode(100, send_buffer[0], send_buffer[1]);
-                        pushValue(&send_buffer[2], nxtLen, 2);
-                        pushValue(send_buffer, nxtLen, 4);
-                        memcpy(buffer, &dirInfoBuffer[index], nxtLen);
-                        aesEncrypt(buffer, &send_buffer[4], nxtLen);
-                        send(connect_fd, send_buffer, 4096, 0);
-                        index = nxtLen;
+                logger -> info("Receive dir information request.");
+                sendDirInfo(connect_fd);
+                logger -> success("Send dir information successful.");
+                break;
+            }
+            case GOTO_DIR: {
+                logger -> info("Receive enter directory request.");
+                getValue(&recv_buffer[34], len, 2);
+                aesDecrypt(&recv_buffer[36], buffer, len);
+                std::string nxtPath = nowPath + "/";
+                for (int i = 0;i < len;i++) nxtPath += buffer[i];
+                FileManager fm(nxtPath, logger);
                 if (! FileManager(nxtPath, logger).checkDirExist()) {
                     sendErrorCode(101, connect_fd);
                 }
@@ -225,9 +234,23 @@ void ConnectionManager::sendDirInfo(const int &connect_fd) {
                 }
                 break;
             }
-            case CREATE_DIR:
-
+            case CREATE_DIR: {
+                logger -> info("User request to create a directory.");
+                getValue(&recv_buffer[34], len, 2);
+                aesDecrypt(&recv_buffer[36], buffer, len);
+                std::string dirPath = nowPath + '/';
+                for(int i = 0; i < len;i++) dirPath.push_back(buffer[i]);
+                FileManager fm(dirPath, logger);
+                if (fm.createDirectory()) {
+                    putStatusCode(104, send_buffer[0], send_buffer[1]);
+                    send(connect_fd, send_buffer, 2, 0);
+                }
+                else {
+                    putStatusCode(105, send_buffer[0], send_buffer[1]);
+                    send(connect_fd, send_buffer, 2, 0);
+                };
                 break;
+            }
             case CLOSE_CONNECT:
                 logger -> info("User request to close connection, close connection.");
                 break;
@@ -311,8 +334,8 @@ void ConnectionManager::aesDecrypt(const unsigned char *in, unsigned char *out, 
 void ConnectionManager::getValue(unsigned char *from, unsigned long long &value, int bytes_len) {
     value = 0;
     for (int i = 0; i < bytes_len; i++) {
-        value = from[i] & 0xff;
         value <<= 8;
+        value |= from[i];
     }
 }
 

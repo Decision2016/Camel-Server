@@ -31,12 +31,12 @@ bool FileManager::getDirInfo(std::string &infoString) {
         }
         std::string name(ptr->d_name);
         if(ptr -> d_type == 4) {
-            dirInfo += ("folder/" + name + ";");
+            dirInfo += ("0/folder/" + name + ";");
         }
         else {
             std::string extName;
             getExtName(extName, name);
-            fileInfo.append(extName + "/" + name + ";");
+            fileInfo.append("1/" + extName + "/" + name + ";");
         }
     }
     infoString = dirInfo + fileInfo;
@@ -46,12 +46,24 @@ void FileManager::getExtName(std::string &extName,const std::string &fileName) {
     int pos = fileName.find_last_of('.');
     if (pos == std::string::npos) extName = "other";
     else extName = fileName.substr(pos + 1);
-
-    //todo: extName 筛选
 }
 
 bool FileManager::checkDirExist() {
     DIR *dir;
-    if ((dir=opendir(path.c_str())) == nullptr) return false;
+    dir=opendir(path.c_str());
+    if (dir == nullptr) return false;
     return true;
+}
+
+bool FileManager::createDirectory() {
+    if (checkDirExist()) return false;
+    int isCreated = mkdir(path.c_str(), S_IRUSR | S_IWUSR | S_IXUSR | S_IRWXG | S_IRWXO);
+    if (! isCreated) {
+        logger -> success("User create directory success.");
+        return true;
+    }
+    else {
+        logger -> error("Some error occurred while user create directory.");
+        return false;
+    }
 }

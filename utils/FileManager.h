@@ -8,6 +8,7 @@
 #include <string>
 #include <map>
 #include <dirent.h>
+#include <sys/stat.h>
 
 #include "../logger/Logger.h"
 
@@ -22,9 +23,7 @@ public:
      */
     bool getDirInfo(std::string &infoString);
     bool checkDirExist();
-    bool deleteDir();
-
-
+    bool createDirectory();
 private:
     std::string path;
     Logger *logger;
