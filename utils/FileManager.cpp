@@ -52,6 +52,7 @@ bool FileManager::checkDirExist() {
     DIR *dir;
     dir=opendir(path.c_str());
     if (dir == nullptr) return false;
+    closedir(dir);
     return true;
 }
 
@@ -66,4 +67,18 @@ bool FileManager::createDirectory() {
         logger -> error("Some error occurred while user create directory.");
         return false;
     }
+}
+
+bool FileManager::deleteDirectory() {
+    if (! checkDirExist()) return false;
+    std::string command = "rm -rf " + path;
+    system(command.c_str());
+    return true;
+}
+
+bool FileManager::rename(std::string &_originName, std::string &_newName) {
+    std::string originPath = path + "/" +  _originName, newPath = path + "/" + _newName;
+    if ((access(originPath.c_str(), 0)) == -1 || (access(newPath.c_str(), 0)) != -1) return false;
+    ::rename(originPath.c_str(), newPath.c_str());
+    return true;
 }

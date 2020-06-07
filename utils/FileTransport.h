@@ -12,11 +12,8 @@
 #include <unistd.h>
 #include <functional>
 
+#include "../constants.h"
 #include "../logger/Logger.h"
-
-static const int POST_FILE = 220;
-static const int FILE_NOT_END = 221;
-static const int FILE_END = 222;
 
 class FileTransport {
 public:
@@ -28,11 +25,15 @@ public:
 private:
     AES_KEY aesKey;
     unsigned char key[32], token[32];
-    int port;
+    int port, file_socket;
     long long lastTimestamp;
     Logger *logger;
     bool threadStatus, closeStatus;
     inline bool checkTimeout();
+
+    void downloadFile(std::string _destination);
+    void uploadFile(std::string _origin);
+
     void static getStatusCode(int &statusCode, const char *buffer);
     void static putStatusCode(const int &statusCode, char &firstChar, char &secondChar);
 };

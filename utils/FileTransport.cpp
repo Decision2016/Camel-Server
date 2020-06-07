@@ -34,30 +34,22 @@ void FileTransport::startThread() {
         return ;
     }
     logger -> info("Socket listener created successful on port %d in file transport thread.", port);
+    connect_fd = accept(listen_fd, (sockaddr*)nullptr, nullptr);
+
+    if (connect_fd != -1) {
+        logger -> info ("Connect with client successful.");
+    }
 
     while(true) {
         if(threadStatus == true) {
             logger -> info("file transport thread stopping.");
             break;
         }
-
-        if ((connect_fd = accept(listen_fd, (sockaddr*)nullptr, nullptr)) == -1) {
-            if (checkTimeout()) {
-                logger -> info("File transport timeout on port %d, close file transport socket thread.", port);
-                break;
-            }
-            else continue;
-        }
         n = recv(connect_fd, buffer, 4096, 0);
         getStatusCode(statusCode, buffer);
         switch (statusCode) {
-            case POST_FILE: {
-                break;
-            }
-            case FILE_NOT_END: {
-                break;
-            }
-            case FILE_END: {
+            case FILE_UPLOAD: {
+                getStatusCode(statusCode, buffer);
                 break;
             }
         }

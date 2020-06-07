@@ -3,7 +3,7 @@ project(Camel_Server)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(Camel_Server main.cpp)
+add_executable(Camel_Server main.cpp constants.h)
 
 add_library(common SHARED
         camel_server.cpp

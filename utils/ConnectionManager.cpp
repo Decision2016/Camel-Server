@@ -189,22 +189,24 @@ void ConnectionManager::fileManage(const int &connect_fd) {
                 for (int i = 0;i < len;i++) nxtPath += buffer[i];
                 FileManager fm(nxtPath, logger);
                 if (! FileManager(nxtPath, logger).checkDirExist()) {
-                    sendErrorCode(101, connect_fd);
+                    sendStatusCode(101, connect_fd);
                 }
                 else {
                     nowPath = nxtPath;
-                    sendDirInfo(connect_fd);
+                    dirLevel ++;
+                    sendStatusCode(100, connect_fd);
                 }
                 break;
             }
             case BACK_DIR: {
                 logger->info("Back to upper directory.");
                 int pos = nowPath.find_last_of('/');
-                if (pos == 1) {
-                    sendErrorCode(101, connect_fd);
+                if (dirLevel == 0) {
+                    sendStatusCode(101, connect_fd);
                 } else {
                     nowPath = nowPath.substr(0, pos);
-                    sendDirInfo(connect_fd);
+                    dirLevel --;
+                    sendStatusCode(100, connect_fd);
                 }
                 break;
             }
@@ -215,22 +217,23 @@ void ConnectionManager::fileManage(const int &connect_fd) {
                 logger -> info("Receive enter directory request.");
                 getValue(&recv_buffer[34], len, 2);
                 aesDecrypt(&recv_buffer[36], buffer, len);
-                std::string nxtPath = nowPath + "/";
-                for (int i = 0;i < len;i++) nxtPath += buffer[i];
-                FileManager fm(nxtPath, logger);
+                std::string deletePath, dirName;
+                dirName.clear();
+                for (int i = 0;i < len;i++) dirName += buffer[i];
+                deletePath = nowPath + '/' + dirName;
+                FileManager fm(deletePath, logger);
                 if (! fm.checkDirExist()) {
-                    sendErrorCode(101, connect_fd);
+                    sendStatusCode(101, connect_fd);
                 }
                 else {
-                    /*
-                    if (fm.deleteDir()) {
-                        logger -> success("Delete directory %s successful.", buffer);
+                    if (fm.deleteDirectory()) {
+                        logger -> success("Delete directory %s successful.", dirName.c_str());
+                        sendStatusCode(102, connect_fd);
                     }
                     else {
                         logger -> error("Some error occurred while delete directory.");
-                        sendErrorCode(101, connect_fd);
+                        sendStatusCode(101, connect_fd);
                     }
-                    */
                 }
                 break;
             }
@@ -249,6 +252,23 @@ void ConnectionManager::fileManage(const int &connect_fd) {
                     putStatusCode(105, send_buffer[0], send_buffer[1]);
                     send(connect_fd, send_buffer, 2, 0);
                 };
+                break;
+            }
+            case RENAME_DIR_FILE: {
+                std::string recvString, originName, newName;
+                getValue(&recv_buffer[34], len, 2);
+                aesDecrypt(&recv_buffer[36], buffer, len);
+                for(int i = 0; i < len;i++) recvString.push_back(buffer[i]);
+                int pos = recvString.find('/');
+                originName = recvString.substr(0, pos);
+                newName = recvString.substr(pos + 1);
+                FileManager fm(nowPath, logger);
+                if (fm.rename(originName, newName)) {
+                    sendStatusCode(131, connect_fd);
+                }
+                else {
+                    sendStatusCode(132, connect_fd);
+                }
                 break;
             }
             case CLOSE_CONNECT:
@@ -339,7 +359,7 @@ void ConnectionManager::getValue(unsigned char *from, unsigned long long &value,
     }
 }
 
-void ConnectionManager::sendErrorCode(int statusCode, const int &connect_fd) {
+void ConnectionManager::sendStatusCode(int statusCode, const int &connect_fd) {
     unsigned char buffer[2];
     putStatusCode(statusCode, buffer[0], buffer[1]);
     send(connect_fd, buffer, 2, 0);

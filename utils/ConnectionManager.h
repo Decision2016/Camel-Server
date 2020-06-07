@@ -28,13 +28,12 @@ static const int GOTO_DIR = 201;
 static const int BACK_DIR = 202;
 static const int DELETE_DIR = 203;
 static const int CREATE_DIR = 204;
+static const int RENAME_DIR_FILE = 205;
 static const int SECOND_CONNECT = 211;
 static const int CLOSE_CONNECT = 212;
-static const int RENAME_DIR = 223;
 static const int DELETE_FILE = 224;
 static const int COPY_FILE = 225;
 static const int MOVE_FILE = 226;
-static const int RENAME_FILE = 227;
 static const int FILE_DISCONNECT = 228;
 static const int REQUIRE_PORT = 240;
 static const int MAX_TIME_WAITING = 300;
@@ -69,7 +68,7 @@ private:
     inline void clearIv();
     void aesEncrypt(const unsigned char* in, unsigned char* out, int len);
     void aesDecrypt(const unsigned char* in, unsigned char* out, int len);
-    void sendErrorCode(int statusCode, const int& connect_fd);
+    void sendStatusCode(int statusCode, const int& connect_fd);
 
     void sendDirInfo(const int &connect_fd);
     void enterDir(const int &connect_fd);

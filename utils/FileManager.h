@@ -6,7 +6,9 @@
 #define CAMEL_SERVER_FILEMANAGER_H
 
 #include <string>
-#include <map>
+#include <stdlib.h>
+#include <cstdio>
+#include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
 
@@ -24,6 +26,8 @@ public:
     bool getDirInfo(std::string &infoString);
     bool checkDirExist();
     bool createDirectory();
+    bool deleteDirectory();
+    bool rename(std::string &_originName, std::string &_newName);
 private:
     std::string path;
     Logger *logger;
