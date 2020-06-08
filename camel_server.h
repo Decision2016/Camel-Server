@@ -17,8 +17,7 @@
 
 #include "./logger/Logger.h"
 #include "utils/ConnectionManager.h"
-
-static const int FIRST_CONNECT = 210;
+#include "constants.h"
 
 class camel_server {
 public:

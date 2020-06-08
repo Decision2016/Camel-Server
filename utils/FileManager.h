@@ -25,6 +25,7 @@ public:
      */
     bool getDirInfo(std::string &infoString);
     bool checkDirExist();
+    bool checkFileExist();
     bool createDirectory();
     bool deleteDirectory();
     bool rename(std::string &_originName, std::string &_newName);

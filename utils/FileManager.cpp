@@ -82,3 +82,8 @@ bool FileManager::rename(std::string &_originName, std::string &_newName) {
     ::rename(originPath.c_str(), newPath.c_str());
     return true;
 }
+
+bool FileManager::checkFileExist() {
+    if ((access(path.c_str(), 0)) == -1) return false;
+    return true;
+}

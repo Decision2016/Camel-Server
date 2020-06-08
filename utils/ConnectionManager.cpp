@@ -4,7 +4,6 @@
 
 
 #include "ConnectionManager.h"
-#include "../camel_server.h"
 
 
 ConnectionManager::ConnectionManager(int _port, RSA *_rsa, Logger *_logger) :port(_port), connectRSA(_rsa), logger(_logger) {
@@ -66,6 +65,7 @@ void ConnectionManager::startConnection() {
                 logger -> success("User authorized successful, start file transport on port %d.", port);
                 generateToken();
                 logger -> success("Token generate successful, send to user.");
+                startFileThread();
                 putStatusCode(112, send_buffer[0], send_buffer[1]);
                 pushValue(buffer, filePort, 2);
                 memcpy(&buffer[2], token, 32);
@@ -181,7 +181,7 @@ void ConnectionManager::fileManage(const int &connect_fd) {
                 logger -> success("Send dir information successful.");
                 break;
             }
-            case GOTO_DIR: {
+            case ENTER_DIR: {
                 logger -> info("Receive enter directory request.");
                 getValue(&recv_buffer[34], len, 2);
                 aesDecrypt(&recv_buffer[36], buffer, len);
@@ -198,7 +198,7 @@ void ConnectionManager::fileManage(const int &connect_fd) {
                 }
                 break;
             }
-            case BACK_DIR: {
+            case BACKUP_DIR: {
                 logger->info("Back to upper directory.");
                 int pos = nowPath.find_last_of('/');
                 if (dirLevel == 0) {
@@ -271,19 +271,12 @@ void ConnectionManager::fileManage(const int &connect_fd) {
                 }
                 break;
             }
-            case CLOSE_CONNECT:
-                logger -> info("User request to close connection, close connection.");
-                break;
-            case POST_FILE:
-
-                break;
-            case COPY_FILE:
-
-                break;
-            case MOVE_FILE:
-
-                break;
-            case DELETE_FILE: {
+            case FILE_GET_PATH: {
+                getValue(&recv_buffer[34], len, 2);
+                pushValue(send_buffer, SERVER_FILE_PATH, 2);
+                pushValue(&send_buffer[2], nowPath.length(), 2);
+                aesEncrypt((unsigned char*)nowPath.c_str(), &send_buffer[4], nowPath.length());
+                send(connect_fd, send_buffer, 4096, 0);
                 break;
             }
         }
@@ -330,6 +323,14 @@ void ConnectionManager::pushValue(unsigned char *destination, unsigned long long
     }
 }
 
+void ConnectionManager::getValue(unsigned char *from, unsigned long long &value, int bytes_len) {
+    value = 0;
+    for (int i = 0; i < bytes_len; i++) {
+        value <<= 8;
+        value |= from[i];
+    }
+}
+
 void ConnectionManager::setWorkPath(const char *_path) {
     memcpy(path, _path, 32);
     nowPath = "./" + std::string(_path);
@@ -349,14 +350,6 @@ void ConnectionManager::aesDecrypt(const unsigned char *in, unsigned char *out, 
     clearIv();
     AES_set_decrypt_key(key, 256, &aesKey);
     AES_cbc_encrypt(in, out, len, &aesKey, iv, AES_DECRYPT);
-}
-
-void ConnectionManager::getValue(unsigned char *from, unsigned long long &value, int bytes_len) {
-    value = 0;
-    for (int i = 0; i < bytes_len; i++) {
-        value <<= 8;
-        value |= from[i];
-    }
 }
 
 void ConnectionManager::sendStatusCode(int statusCode, const int &connect_fd) {

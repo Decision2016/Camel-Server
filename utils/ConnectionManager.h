@@ -22,20 +22,7 @@
 #include "../logger/Logger.h"
 #include <openssl/err.h>
 #include "FileTransport.h"
-
-static const int REFRESH_DIR = 200;
-static const int GOTO_DIR = 201;
-static const int BACK_DIR = 202;
-static const int DELETE_DIR = 203;
-static const int CREATE_DIR = 204;
-static const int RENAME_DIR_FILE = 205;
-static const int SECOND_CONNECT = 211;
-static const int CLOSE_CONNECT = 212;
-static const int DELETE_FILE = 224;
-static const int COPY_FILE = 225;
-static const int MOVE_FILE = 226;
-static const int FILE_DISCONNECT = 228;
-static const int REQUIRE_PORT = 240;
+#include "../constants.h"
 static const int MAX_TIME_WAITING = 300;
 
 class ConnectionManager {
