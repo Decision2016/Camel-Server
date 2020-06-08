@@ -87,3 +87,9 @@ bool FileManager::checkFileExist() {
     if ((access(path.c_str(), 0)) == -1) return false;
     return true;
 }
+
+bool FileManager::deleteFile() {
+    if (! checkFileExist()) return false;
+    remove(path.c_str());
+    return true;
+}

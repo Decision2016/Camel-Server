@@ -28,6 +28,7 @@ public:
     bool checkFileExist();
     bool createDirectory();
     bool deleteDirectory();
+    bool deleteFile();
     bool rename(std::string &_originName, std::string &_newName);
 private:
     std::string path;

@@ -279,6 +279,23 @@ void ConnectionManager::fileManage(const int &connect_fd) {
                 send(connect_fd, send_buffer, 4096, 0);
                 break;
             }
+            case FILE_DELETE: {
+                logger -> info("Receive delete file request.");
+                getValue(&recv_buffer[34], len, 2);
+                aesDecrypt(&recv_buffer[36], buffer, len);
+                std::string deletePath, fileName;
+                fileName.clear();
+                for (int i = 0;i < len;i++) fileName += buffer[i];
+                deletePath = nowPath + '/' + fileName;
+                FileManager fm(deletePath, logger);
+
+                if (fm.deleteFile()) {
+                    sendStatusCode(SERVER_DELETE, connect_fd);
+                }
+                else {
+                    sendStatusCode(SERVER_FILE_NOT_EXISTED, connect_fd);
+                }
+            }
         }
         lastTimestamp = time(nullptr);
     }
