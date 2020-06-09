@@ -4,7 +4,7 @@
 
 #include "Session.h"
 
-Session::Session(int port, RSA *_rsa, Logger *_logger) : BaseClass (port, logger){
+Session::Session(int port, RSA *_rsa, Logger *_logger) : BaseClass (port, _logger){
     keyPair = _rsa;
 }
 
@@ -48,9 +48,9 @@ void Session::fileManage() {
             }
             case ENTER_DIR: {
                 logger -> info("Receive enter directory request.");
-                popValue(&recv_buffer[34], length, 2);
+                popValue(&buffer[34], length, 2);
                 std::string nxtPath = nowPath + "/";
-                for (int i = 0;i < len;i++) nxtPath += buffer[i];
+                for (int i = 0;i < length;i++) nxtPath += buffer[i + 36];
                 FileManager fm(nxtPath, logger);
                 if (! FileManager(nxtPath, logger).checkDirExist()) {
                     sendStatusCode(SERVER_NOT_EXISTED);
@@ -77,10 +77,10 @@ void Session::fileManage() {
             }
             case DELETE_DIR: {
                 logger -> info("Receive enter directory request.");
-                popValue(&recv_buffer[34], length, 2);
+                popValue(&buffer[34], length, 2);
                 std::string deletePath, dirName;
                 dirName.clear();
-                for (int i = 0;i < len;i++) dirName += buffer[i];
+                for (int i = 0;i < length;i++) dirName += buffer[i + 36];
                 deletePath = nowPath + '/' + dirName;
                 FileManager fm(deletePath, logger);
                 if (! fm.checkDirExist()) {
@@ -100,9 +100,9 @@ void Session::fileManage() {
             }
             case CREATE_DIR: {
                 logger -> info("User request to create a directory.");
-                popValue(&recv_buffer[34], length, 2);
+                popValue(&buffer[34], length, 2);
                 std::string dirPath = nowPath + '/';
-                for(int i = 0; i < len;i++) dirPath.push_back(buffer[i]);
+                for(int i = 0; i < length;i++) dirPath.push_back(buffer[i + 36]);
                 FileManager fm(dirPath, logger);
                 if (fm.createDirectory()) {
                     sendStatusCode(SERVER_EXISTED);
@@ -114,8 +114,8 @@ void Session::fileManage() {
             }
             case RENAME_DIR_FILE: {
                 std::string recvString, originName, newName;
-                popValue(&recv_buffer[34], length, 2);
-                for(int i = 0; i < len;i++) recvString.push_back(buffer[i]);
+                popValue(&buffer[34], length, 2);
+                for(int i = 0; i < length;i++) recvString.push_back(buffer[i + 36]);
                 int pos = recvString.find('/');
                 originName = recvString.substr(0, pos);
                 newName = recvString.substr(pos + 1);
@@ -137,10 +137,10 @@ void Session::fileManage() {
             }
             case FILE_DELETE: {
                 logger -> info("Receive delete file request.");
-                popValue(&recv_buffer[34], length, 2);
+                popValue(&buffer[34], length, 2);
                 std::string deletePath, fileName;
                 fileName.clear();
-                for (int i = 0;i < len;i++) fileName += buffer[i];
+                for (int i = 0;i < length;i++) fileName += buffer[i + 36];
                 deletePath = nowPath + '/' + fileName;
                 FileManager fm(deletePath, logger);
 
@@ -161,6 +161,7 @@ void Session::threadInstance() {
     int socket_fd, n;
     unsigned long long statusCode, length;
     unsigned char _token[TOKEN_LENGTH];
+    unsigned char test1[BUFFER_LENGTH], test2[BUFFER_LENGTH];
     socket_fd = accept(listen_fd, (sockaddr*)nullptr, nullptr);
     setConnect(socket_fd);
 
@@ -174,8 +175,10 @@ void Session::threadInstance() {
             if (authUser(&recv_buffer[2])) {
                 logger -> success("User authorized successful, start file transport on port %d.", port);
                 generateToken(_token);
+                setToken(_token);
                 logger -> success("Token generate successful, send to user.");
                 int filePort = startFileThread();
+
                 pushValue(send_buffer,SERVER_SECOND_CONNECT, STATUS_LENGTH);
                 pushValue(buffer, filePort, 2);
                 memcpy(&buffer[2], _token, 32);
@@ -186,6 +189,7 @@ void Session::threadInstance() {
             }
         }
     }
+    close(listen_fd);
 }
 
 void Session::sendDirInfo() {
@@ -204,9 +208,9 @@ void Session::sendDirInfo() {
 
     pushValue(buffer, SERVER_DIR_INFO, STATUS_LENGTH);
     pushValue(&buffer[2], nxtLen, 2);
-    memcpy(&buffer, dirInfoBuffer, nxtLen);
+    memcpy(&buffer[4], dirInfoBuffer, nxtLen);
 
-    aesEncrypt(&buffer[4], send_buffer, BUFFER_LENGTH);
+    aesEncrypt(buffer, send_buffer, BUFFER_LENGTH);
     send(connect_fd, send_buffer, BUFFER_LENGTH, 0);
     index = nxtLen;
 
@@ -216,14 +220,14 @@ void Session::sendDirInfo() {
             continue;
         }
         aesDecrypt(recv_buffer, buffer, BUFFER_LENGTH);
-        popValue(recv_buffer, statusCode, STATUS_LENGTH);
+        popValue(buffer, statusCode, STATUS_LENGTH);
         if (statusCode != RECEIVE_SUCCESS) break;
         if (index != infoLength) {
             nxtLen = std::min(infoLength - index, 4080);
 
             pushValue(buffer, SERVER_DIR_INFO, STATUS_LENGTH);
             pushValue(&buffer[2], nxtLen, 2);
-            memcpy(&buffer, dirInfoBuffer, nxtLen);
+            memcpy(&buffer[4], dirInfoBuffer, nxtLen);
 
             aesEncrypt(buffer, send_buffer, nxtLen);
             send(connect_fd, send_buffer, BUFFER_LENGTH, 0);
@@ -231,7 +235,6 @@ void Session::sendDirInfo() {
         }
         else {
             sendStatusCode(SERVER_INFO_END);
-            send(connect_fd, send_buffer, 2, 0);
             break;
         }
     }
@@ -255,12 +258,8 @@ bool Session::authUser(const unsigned char *buffer) {
     memcpy(_username, plainText, USERNAME_LENGTH);
     memcpy(_password, &plainText[USERNAME_LENGTH], PASSWORD_LENGTH);
     if (strcmp(username, _username) != 0 || strcmp(password, _password) != 0) return false;
-    setKey(&plainText[32]);
+    setKey(&plainText[64]);
     return true;
-}
-
-bool Session::checkToken(unsigned char *buffer) {
-    return memcmp(buffer, token, TOKEN_LENGTH);
 }
 
 void Session::setWorkPath(const char *_path) {

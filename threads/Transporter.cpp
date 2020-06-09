@@ -29,25 +29,27 @@ void Transporter::threadInstance() {
         }
 
         aesDecrypt(recv_buffer, buffer, BUFFER_LENGTH);
+        if (checkToken(&buffer[2]) != 0) continue;
+
         popValue(buffer, statusCode, STATUS_LENGTH);
 
         switch (statusCode) {
             case FILE_UPLOAD: {
                 logger -> info("Receive file upload request, start receive file.");
-                popValue(&buffer[2], current, 8);
-                popValue(&buffer[10], length, 2);
+                popValue(&buffer[34], current, 8);
+                popValue(&buffer[42], length, 2);
                 std::string destinationPath;
-                for (int i = 0; i < length;i++) destinationPath.push_back(buffer[i + 10]);
+                for (int i = 0; i < length;i++) destinationPath.push_back(buffer[i + 44]);
                 sendFile(destinationPath, current);
                 break;
             }
 
             case FILE_DOWNLOAD: {
                 logger -> info("Receive file download request, start send file");
-                popValue(&buffer[2], current, 8);
-                popValue(&buffer[10], length, 2);
+                popValue(&buffer[34], current, 8);
+                popValue(&buffer[42], length, 2);
                 std::string originPath;
-                for (int i = 0; i < length; i++) originPath.push_back(buffer[i]);
+                for (int i = 0; i < length; i++) originPath.push_back(buffer[i + 44]);
                 sendFile(originPath, current);
                 break;
             }
@@ -59,9 +61,7 @@ void Transporter::threadInstance() {
 void Transporter::recvFile(std::string &_destination, unsigned long long _current) {
     if (_current == 0) remove(_destination.c_str());
 
-    pushValue(buffer, SERVER_FILE_RECEIVE, STATUS_LENGTH);
-    aesEncrypt(buffer, send_buffer, BUFFER_LENGTH);
-    send(connect_fd, send_buffer, BUFFER_LENGTH, 0);
+    sendStatusCode(SERVER_FILE_RECEIVE);
 
     int n;
     unsigned long long statusCode, len;
@@ -73,6 +73,7 @@ void Transporter::recvFile(std::string &_destination, unsigned long long _curren
         if (n == -1) continue;
 
         aesDecrypt(recv_buffer, buffer, BUFFER_LENGTH);
+        if (checkToken(&buffer[2]) != 0) continue;
 
         popValue(buffer, statusCode, 2);
 
@@ -81,8 +82,8 @@ void Transporter::recvFile(std::string &_destination, unsigned long long _curren
         }
 
         if (statusCode == FILE_TRANSPORT) {
-            popValue(&buffer[2], len, 2);
-            fwrite(&buffer[4], 1, len, fp);
+            popValue(&buffer[34], len, 2);
+            fwrite(&buffer[36], 1, len, fp);
 
             sendStatusCode(SERVER_FILE_RECEIVE);
         }
@@ -105,20 +106,22 @@ void Transporter::sendFile(std::string &_origin, unsigned long long _current) {
     fseeko64(fp, _current, 0);
 
     while (true) {
-        n = recv(connect_fd, recv_buffer, 4096, 0);
+        n = recv(connect_fd, recv_buffer, BUFFER_LENGTH, 0);
         if (n == -1) {
             continue;
         }
 
         aesDecrypt(recv_buffer, buffer, BUFFER_LENGTH);
-        popValue(recv_buffer, statusCode, 2);
+        if (checkToken(&buffer[2]) != 0) continue;
+
+        popValue(buffer, statusCode, STATUS_LENGTH);
         if (statusCode == FILE_PAUSED) break;
 
         if (current == size) {
-            pushValue(send_buffer, SERVER_FILE_FINISHED, 2);
             sendStatusCode(SERVER_FILE_FINISHED);
             break;
         }
+
         pushValue(buffer, SERVER_FILE_TRANSPORT, STATUS_LENGTH);
         nxtLen = std::min(ONCE_MAX_LENGTH, size - current);
         pushValue(&buffer[2], nxtLen, 2);

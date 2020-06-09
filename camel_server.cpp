@@ -19,7 +19,7 @@ void camel_server::serverInstance() {
         socket_fd = accept(listen_fd,(struct sockaddr *) &client_addr, &len);
         if (socket_fd == -1) continue;
         logger -> info("Receive connect request from ip: %s", inet_ntoa(client_addr.sin_addr));
-        length = recv(connect_fd, recv_buffer, BUFFER_LENGTH, 0);
+        length = recv(socket_fd, recv_buffer, BUFFER_LENGTH, 0);
 
         popValue(recv_buffer, statusCode, STATUS_LENGTH);
 
@@ -39,6 +39,7 @@ void camel_server::serverInstance() {
             Session se(randPort, keyPair, logger);
             se.setUserInfo(username, password);
             se.setWorkPath(path);
+            se.trySocket();
             std::thread(&Session::threadInstance, &se).detach();
             pushValue(send_buffer, SERVER_FIRST_CONNECT, STATUS_LENGTH);
             pushValue(&send_buffer[STATUS_LENGTH], randPort, 2);

@@ -59,13 +59,13 @@ void BaseClass::sha256(unsigned char *buffer,unsigned char *out, int length) {
 
 void BaseClass::aesEncrypt(unsigned char *in, unsigned char *out, int len) {
     memset(iv, 0, IV_LENGTH);
-    AES_set_encrypt_key(key, KEY_LENGTH, &aesKey);
+    AES_set_encrypt_key(key, AES_KEY_LENGTH, &aesKey);
     AES_cbc_encrypt(in, out, len, &aesKey, iv, AES_ENCRYPT);
 }
 
 void BaseClass::aesDecrypt(unsigned char *in, unsigned char *out, int len) {
     memset(iv, 0, IV_LENGTH);
-    AES_set_decrypt_key(key, KEY_LENGTH, &aesKey);
+    AES_set_decrypt_key(key, AES_KEY_LENGTH, &aesKey);
     AES_cbc_encrypt(in, out, len, &aesKey, iv, AES_DECRYPT);
 }
 
@@ -73,7 +73,7 @@ void BaseClass::sendStatusCode(unsigned long long _statusCode) {
     unsigned char buffer[BUFFER_LENGTH];
     pushValue(_buffer, _statusCode, STATUS_LENGTH);
     aesEncrypt(_buffer, buffer, BUFFER_LENGTH);
-    send(connect_fd, buffer, STATUS_LENGTH, 0);
+    send(connect_fd, buffer, BUFFER_LENGTH, 0);
 }
 
 void BaseClass::stopThread() {
@@ -96,6 +96,10 @@ void BaseClass::popValue(unsigned char *origin, unsigned long long &value, int b
         value <<= 8;
         value |= origin[i];
     }
+}
+
+bool BaseClass::checkToken(unsigned char *buffer) {
+    return memcmp(buffer, token, TOKEN_LENGTH);
 }
 
 int BaseClass::choosePort() {

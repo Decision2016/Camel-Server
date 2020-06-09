@@ -27,6 +27,7 @@ public:
     void aesDecrypt(unsigned char *in, unsigned char *out, int len);
     void sendStatusCode(unsigned long long _statusCode);
     void stopThread();
+    bool checkToken(unsigned char buffer[32]);
     bool getThreadStatus();
 
     static void pushValue(unsigned char *destination, unsigned long long value, int bytes_len);

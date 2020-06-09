@@ -34,7 +34,6 @@ private:
     int startFileThread();
     bool authUser(const unsigned char* buffer);
     void generateToken(unsigned char* out);
-    bool checkToken(unsigned char buffer[32]);
     void sendDirInfo();
 };
 
