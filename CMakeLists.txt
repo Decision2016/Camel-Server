@@ -3,13 +3,14 @@ project(Camel_Server)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(Camel_Server main.cpp constants.h)
+add_executable(Camel_Server main.cpp utils/constants.h threads/Transporter.cpp threads/Transporter.h threads/Session.cpp threads/Session.h camel_server.cpp camel_server.h)
+
+include_directories(logger
+        utils
+        threads)
 
 add_library(common SHARED
-        camel_server.cpp
         utils/FileManager.cpp
-        utils/ConnectionManager.cpp
-        utils/FileTransport.cpp
-        logger/Logger.cpp utils/FileInfo.cpp utils/FileInfo.h)
+        logger/Logger.cpp utils/BaseClass.cpp utils/BaseClass.h utils/Configer.cpp utils/Configer.h)
 
 target_link_libraries(Camel_Server common -lpthread -lssl -lcrypto)

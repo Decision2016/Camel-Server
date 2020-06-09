@@ -1,0 +1,280 @@
+//
+// Created by Decision on 2020/6/9.
+//
+
+#include "Session.h"
+
+Session::Session(int port, RSA *_rsa, Logger *_logger) : BaseClass (port, logger){
+    keyPair = _rsa;
+}
+
+Session::~Session() {
+    if (tp) {
+        tp -> stopThread();
+    }
+
+    close(listen_fd);
+}
+
+void Session::setUserInfo(char *_username, char *_password) {
+    strcpy(username, _username);
+    strcpy(password, _password);
+}
+
+void Session::fileManage() {
+    unsigned long long statusCode, length;
+    int len;
+    while (true) {
+        len = recv(connect_fd, recv_buffer, BUFFER_LENGTH, 0);
+
+        if (len == -1) {
+            continue;
+        }
+
+        aesDecrypt(recv_buffer, buffer, BUFFER_LENGTH);
+
+        if (checkToken(&buffer[2]) != 0) continue;
+
+        popValue(buffer, statusCode, STATUS_LENGTH);
+
+        if (statusCode == CONNECTION_END) break;
+
+        switch (statusCode) {
+            case REFRESH_DIR: {
+                logger -> info("Receive dir information request.");
+                sendDirInfo();
+                logger -> success("Send dir information successful.");
+                break;
+            }
+            case ENTER_DIR: {
+                logger -> info("Receive enter directory request.");
+                popValue(&recv_buffer[34], length, 2);
+                std::string nxtPath = nowPath + "/";
+                for (int i = 0;i < len;i++) nxtPath += buffer[i];
+                FileManager fm(nxtPath, logger);
+                if (! FileManager(nxtPath, logger).checkDirExist()) {
+                    sendStatusCode(SERVER_NOT_EXISTED);
+                }
+                else {
+                    nowPath = nxtPath;
+                    dirLevel ++;
+                    sendStatusCode(SERVER_DIR_INFO);
+                }
+                break;
+            }
+            case BACKUP_DIR: {
+                logger->info("Back to upper directory.");
+                int pos = nowPath.find_last_of('/');
+                if (dirLevel == 0) {
+                    sendStatusCode(SERVER_NOT_EXISTED);
+                }
+                else {
+                    nowPath = nowPath.substr(0, pos);
+                    dirLevel --;
+                    sendStatusCode(SERVER_DIR_INFO);
+                }
+                break;
+            }
+            case DELETE_DIR: {
+                logger -> info("Receive enter directory request.");
+                popValue(&recv_buffer[34], length, 2);
+                std::string deletePath, dirName;
+                dirName.clear();
+                for (int i = 0;i < len;i++) dirName += buffer[i];
+                deletePath = nowPath + '/' + dirName;
+                FileManager fm(deletePath, logger);
+                if (! fm.checkDirExist()) {
+                    sendStatusCode(SERVER_NOT_EXISTED);
+                }
+                else {
+                    if (fm.deleteDirectory()) {
+                        logger -> success("Delete directory %s successful.", dirName.c_str());
+                        sendStatusCode(SERVER_DELETE);
+                    }
+                    else {
+                        logger -> error("Some error occurred while delete directory.");
+                        sendStatusCode(SERVER_NOT_EXISTED);
+                    }
+                }
+                break;
+            }
+            case CREATE_DIR: {
+                logger -> info("User request to create a directory.");
+                popValue(&recv_buffer[34], length, 2);
+                std::string dirPath = nowPath + '/';
+                for(int i = 0; i < len;i++) dirPath.push_back(buffer[i]);
+                FileManager fm(dirPath, logger);
+                if (fm.createDirectory()) {
+                    sendStatusCode(SERVER_EXISTED);
+                }
+                else {
+                    sendStatusCode(SERVER_DIR_CREATED);
+                };
+                break;
+            }
+            case RENAME_DIR_FILE: {
+                std::string recvString, originName, newName;
+                popValue(&recv_buffer[34], length, 2);
+                for(int i = 0; i < len;i++) recvString.push_back(buffer[i]);
+                int pos = recvString.find('/');
+                originName = recvString.substr(0, pos);
+                newName = recvString.substr(pos + 1);
+                FileManager fm(nowPath, logger);
+                if (fm.rename(originName, newName)) {
+                    sendStatusCode(SERVER_RENAME_ERROR);
+                }
+                else {
+                    sendStatusCode(SERVER_RENAME);
+                }
+                break;
+            }
+            case FILE_GET_PATH: {
+                pushValue(send_buffer, SERVER_FILE_PATH, 2);
+                pushValue(&send_buffer[2], nowPath.length(), 2);
+                aesEncrypt((unsigned char*)nowPath.c_str(), &send_buffer[4], nowPath.length());
+                send(connect_fd, send_buffer, BUFFER_LENGTH, 0);
+                break;
+            }
+            case FILE_DELETE: {
+                logger -> info("Receive delete file request.");
+                popValue(&recv_buffer[34], length, 2);
+                std::string deletePath, fileName;
+                fileName.clear();
+                for (int i = 0;i < len;i++) fileName += buffer[i];
+                deletePath = nowPath + '/' + fileName;
+                FileManager fm(deletePath, logger);
+
+                if (fm.deleteFile()) {
+                    sendStatusCode(SERVER_DELETE);
+                }
+                else {
+                    sendStatusCode(SERVER_NOT_EXISTED);
+                }
+                break;
+            }
+        }
+    }
+    close(connect_fd);
+}
+
+void Session::threadInstance() {
+    int socket_fd, n;
+    unsigned long long statusCode, length;
+    unsigned char _token[TOKEN_LENGTH];
+    socket_fd = accept(listen_fd, (sockaddr*)nullptr, nullptr);
+    setConnect(socket_fd);
+
+    while (true) {
+        n = recv(connect_fd, recv_buffer, BUFFER_LENGTH, 0);
+        if (n == -1) continue;
+        popValue(recv_buffer, statusCode, STATUS_LENGTH);
+
+        if (statusCode == SECOND_CONNECT) {
+            logger->info("Received authorized request, start auth user.");
+            if (authUser(&recv_buffer[2])) {
+                logger -> success("User authorized successful, start file transport on port %d.", port);
+                generateToken(_token);
+                logger -> success("Token generate successful, send to user.");
+                int filePort = startFileThread();
+                pushValue(send_buffer,SERVER_SECOND_CONNECT, STATUS_LENGTH);
+                pushValue(buffer, filePort, 2);
+                memcpy(&buffer[2], _token, 32);
+                aesEncrypt(buffer, &send_buffer[2], 34);
+                send(connect_fd, send_buffer, 50, 0);
+                fileManage();
+                break;
+            }
+        }
+    }
+}
+
+void Session::sendDirInfo() {
+    unsigned long long statusCode;
+    int length;
+    int infoLength = 0, index = 0, nxtLen = 0;
+    const char *dirInfoBuffer;
+    std::string dirInfo;
+    FileManager fm(nowPath, logger);
+    fm.getDirInfo(dirInfo);
+    dirInfoBuffer = dirInfo.c_str();
+
+    infoLength = dirInfo.length();
+    // logger -> info("Debug info: infoLength = %d", infoLength);
+    nxtLen = std::min(infoLength, (int)ONCE_MAX_LENGTH);
+
+    pushValue(buffer, SERVER_DIR_INFO, STATUS_LENGTH);
+    pushValue(&buffer[2], nxtLen, 2);
+    memcpy(&buffer, dirInfoBuffer, nxtLen);
+
+    aesEncrypt(&buffer[4], send_buffer, BUFFER_LENGTH);
+    send(connect_fd, send_buffer, BUFFER_LENGTH, 0);
+    index = nxtLen;
+
+    while (true) {
+        length = recv(connect_fd, recv_buffer, 4096, 0);
+        if (length == -1) {
+            continue;
+        }
+        aesDecrypt(recv_buffer, buffer, BUFFER_LENGTH);
+        popValue(recv_buffer, statusCode, STATUS_LENGTH);
+        if (statusCode != RECEIVE_SUCCESS) break;
+        if (index != infoLength) {
+            nxtLen = std::min(infoLength - index, 4080);
+
+            pushValue(buffer, SERVER_DIR_INFO, STATUS_LENGTH);
+            pushValue(&buffer[2], nxtLen, 2);
+            memcpy(&buffer, dirInfoBuffer, nxtLen);
+
+            aesEncrypt(buffer, send_buffer, nxtLen);
+            send(connect_fd, send_buffer, BUFFER_LENGTH, 0);
+            index += nxtLen;
+        }
+        else {
+            sendStatusCode(SERVER_INFO_END);
+            send(connect_fd, send_buffer, 2, 0);
+            break;
+        }
+    }
+}
+
+int Session::startFileThread() {
+    int filePort = choosePort();
+    tp = new Transporter(filePort, logger);
+    tp -> setKey(key);
+    tp -> setToken(token);
+    tp -> trySocket();
+    std::thread(&Transporter::threadInstance, tp).detach();
+    return filePort;
+}
+
+bool Session::authUser(const unsigned char *buffer) {
+    char _username[USERNAME_LENGTH], _password[PASSWORD_LENGTH];
+    unsigned char plainText[BUFFER_LENGTH];
+    int result = RSA_private_decrypt(256, (unsigned char*) buffer, plainText, keyPair, RSA_PKCS1_PADDING);
+    if (result < 0) return false;
+    memcpy(_username, plainText, USERNAME_LENGTH);
+    memcpy(_password, &plainText[USERNAME_LENGTH], PASSWORD_LENGTH);
+    if (strcmp(username, _username) != 0 || strcmp(password, _password) != 0) return false;
+    setKey(&plainText[32]);
+    return true;
+}
+
+bool Session::checkToken(unsigned char *buffer) {
+    return memcmp(buffer, token, TOKEN_LENGTH);
+}
+
+void Session::setWorkPath(const char *_path) {
+    memcpy(path, _path, 32);
+    nowPath = "./" + std::string(_path);
+}
+
+void Session::generateToken(unsigned char* out) {
+    unsigned char buffer[500];
+    long long timestamp = time(nullptr);
+    unsigned char *pos = buffer;
+    i2d_RSAPublicKey(keyPair, &pos);
+    memcpy(buffer, username, 16);
+    memcpy(buffer, password, 16);
+    pushValue(&buffer[302], timestamp, 8);
+    sha256(buffer, out, 310);
+}

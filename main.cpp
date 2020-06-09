@@ -1,11 +1,8 @@
 #include <iostream>
-
 #include <unistd.h>
-#include <sys/socket.h>
-#include <thread>
-#include "camel_server.h"
 
-#include "logger/Logger.h"
+#include "Logger.h"
+#include "camel_server.h"
 
 const int PATH_SIZE = 255;
 
@@ -24,9 +21,10 @@ int main(int argc, char **argv) {
     }
     logger->info("Camel is starting...");
 
-    camel_server camelServer(username, password, logger);
-    camelServer.setPort(25565);
-    camelServer.startServer();
+    camel_server cs(username, password, logger, 25565);
+    if (cs.trySocket()) {
+        cs.serverInstance();
+    }
     // todo: 进行网络环境检查
     logger->info("Camel closed.");
     delete logger;

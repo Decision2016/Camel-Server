@@ -1,45 +1,27 @@
 //
-// Created by Decision on 2020/5/8.
+// Created by Decision on 2020/6/9.
 //
 
 #ifndef CAMEL_SERVER_CAMEL_SERVER_H
 #define CAMEL_SERVER_CAMEL_SERVER_H
 
-#include <cstdlib>
-#include <random>
-#include <unistd.h>
-#include <thread>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <iostream>
+#include <openssl/rsa.h>
 #include <arpa/inet.h>
-#include <sys/stat.h>
 
-#include "./logger/Logger.h"
-#include "utils/ConnectionManager.h"
+#include "BaseClass.h"
 #include "constants.h"
+#include "Session.h"
 
-class camel_server {
+class camel_server: public BaseClass {
 public:
-    camel_server(char* _username, char* _password, Logger *_logger);
-    void startServer();
-    void setPort(int _port);
+    camel_server(char* _username, char* _password, Logger *_logger, int _port);
+    void serverInstance();
     void setWorkPath(char *_path);
-    void setMaxThread(int _maxThread);
 private:
-    char username[16], password[16];
-    int port;
-    char path[32] = "camel";
-    int maxThread;
-    Logger *logger;
-
-    void packBuffer(unsigned char* _buffer, RSA* keyPair, int _port);
+    unsigned char recv_buffer[BUFFER_LENGTH], send_buffer[BUFFER_LENGTH], buffer[BUFFER_LENGTH];
     void createWorkPath();
-    static void getStatusCode(int &statusCode, const unsigned char* buffer);
-    static void putStatusCode(const int &statusCode, unsigned char &firstChar, unsigned char &secondChar);
-    static void pushValue(unsigned char *destination, unsigned long long value, int bytes_len);
-    static int chosePort();
-    static bool checkPort(int port);
+    char path[PATH_LENGTH] = "camel";
+    char username[USERNAME_LENGTH], password[PASSWORD_LENGTH];
 };
 
 

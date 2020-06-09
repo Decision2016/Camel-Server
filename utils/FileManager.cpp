@@ -17,7 +17,7 @@ bool FileManager::getDirInfo(std::string &infoString) {
 
     if ((dir=opendir(path.c_str())) == nullptr)
     {
-        logger -> error("An error occurred while open path %s.", path.c_str());
+        logger -> error((char*)"An error occurred while open path %s.", path.c_str());
         return false;
     }
 
@@ -60,11 +60,11 @@ bool FileManager::createDirectory() {
     if (checkDirExist()) return false;
     int isCreated = mkdir(path.c_str(), S_IRUSR | S_IWUSR | S_IXUSR | S_IRWXG | S_IRWXO);
     if (! isCreated) {
-        logger -> success("User create directory success.");
+        logger -> success((char*)"User create directory success.");
         return true;
     }
     else {
-        logger -> error("Some error occurred while user create directory.");
+        logger -> error((char*)"Some error occurred while user create directory.");
         return false;
     }
 }
