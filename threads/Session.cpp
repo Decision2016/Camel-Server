@@ -129,9 +129,10 @@ void Session::fileManage() {
                 break;
             }
             case FILE_GET_PATH: {
-                pushValue(send_buffer, SERVER_FILE_PATH, 2);
-                pushValue(&send_buffer[2], nowPath.length(), 2);
-                aesEncrypt((unsigned char*)nowPath.c_str(), &send_buffer[4], nowPath.length());
+                pushValue(buffer, SERVER_FILE_PATH, 2);
+                pushValue(&buffer[2], nowPath.length(), 2);
+                memcpy(&buffer[4], nowPath.c_str(), nowPath.length());
+                aesEncrypt(buffer, send_buffer, BUFFER_LENGTH);
                 send(connect_fd, send_buffer, BUFFER_LENGTH, 0);
                 break;
             }

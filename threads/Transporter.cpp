@@ -40,7 +40,7 @@ void Transporter::threadInstance() {
                 popValue(&buffer[42], length, 2);
                 std::string destinationPath;
                 for (int i = 0; i < length;i++) destinationPath.push_back(buffer[i + 44]);
-                sendFile(destinationPath, current);
+                recvFile(destinationPath, current);
                 break;
             }
 
@@ -78,6 +78,15 @@ void Transporter::recvFile(std::string &_destination, unsigned long long _curren
         popValue(buffer, statusCode, 2);
 
         if (statusCode == FILE_PAUSED || statusCode == CLIENT_FILE_END) {
+            fclose(fp);
+            logger -> info((char*) "User pause file upload or file receive finished.");
+            break;
+        }
+
+        if (statusCode == FILE_STOP) {
+            fclose(fp);
+            remove(_destination.c_str());
+            logger -> info((char*) "User stop file upload.");
             break;
         }
 
@@ -88,7 +97,6 @@ void Transporter::recvFile(std::string &_destination, unsigned long long _curren
             sendStatusCode(SERVER_FILE_RECEIVE);
         }
     }
-    fclose(fp);
 }
 
 void Transporter::sendFile(std::string &_origin, unsigned long long _current) {
@@ -115,17 +123,22 @@ void Transporter::sendFile(std::string &_origin, unsigned long long _current) {
         if (checkToken(&buffer[2]) != 0) continue;
 
         popValue(buffer, statusCode, STATUS_LENGTH);
-        if (statusCode == FILE_PAUSED) break;
 
         if (current == size) {
             sendStatusCode(SERVER_FILE_FINISHED);
             break;
         }
 
+        if (statusCode == FILE_PAUSED) break;
+
+        if (statusCode == FILE_STOP) {
+            logger -> info((char*) "User stop file download.");
+            break;
+        }
         pushValue(buffer, SERVER_FILE_TRANSPORT, STATUS_LENGTH);
         nxtLen = std::min(ONCE_MAX_LENGTH, size - current);
         pushValue(&buffer[2], nxtLen, 2);
-        fread(buffer, 1, nxtLen, fp);
+        fread(&buffer[4], 1, nxtLen, fp);
         aesEncrypt(buffer, send_buffer, BUFFER_LENGTH);
         send(connect_fd, send_buffer, BUFFER_LENGTH, 0);
         current += nxtLen;
