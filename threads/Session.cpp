@@ -27,13 +27,8 @@ void Session::fileManage() {
     while (true) {
         len = recv(connect_fd, recv_buffer, BUFFER_LENGTH, 0);
 
-        if (len == -1) {
-            continue;
-        }
-
+        if (len == 0) break;
         aesDecrypt(recv_buffer, buffer, BUFFER_LENGTH);
-
-        if (checkToken(&buffer[2]) != 0) continue;
 
         popValue(buffer, statusCode, STATUS_LENGTH);
 
@@ -191,6 +186,7 @@ void Session::threadInstance() {
         }
     }
     close(listen_fd);
+    logger -> info("Close session thread on port %d", port);
 }
 
 void Session::sendDirInfo() {

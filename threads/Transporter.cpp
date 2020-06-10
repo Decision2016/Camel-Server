@@ -24,14 +24,14 @@ void Transporter::threadInstance() {
 
         length = recv(connect_fd, recv_buffer, 4096, 0);
 
-        if (length == -1) {
-            continue;
-        }
+        if (length == 0) break;
 
         aesDecrypt(recv_buffer, buffer, BUFFER_LENGTH);
         if (checkToken(&buffer[2]) != 0) continue;
 
         popValue(buffer, statusCode, STATUS_LENGTH);
+
+        if (statusCode == CONNECTION_END) break;
 
         switch (statusCode) {
             case FILE_UPLOAD: {
@@ -55,6 +55,8 @@ void Transporter::threadInstance() {
             }
         }
     }
+    logger -> info("Close file transport thread on port %d", port);
+    close(connect_fd);
     close(listen_fd);
 }
 

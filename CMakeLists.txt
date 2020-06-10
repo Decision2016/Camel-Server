@@ -17,4 +17,6 @@ add_library(common SHARED
         threads/Transporter.cpp
         camel_server.cpp)
 
+link_libraries(openssl)
+
 target_link_libraries(Camel_Server common -lpthread -lssl -lcrypto -lini)
