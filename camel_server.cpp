@@ -58,3 +58,10 @@ void camel_server::serverInstance() {
     }
     close(listen_fd);
 }
+
+bool camel_server::setWorkPath(std::string _path) {
+    if (_path.length() != 0) path = _path;
+    FileManager fm(_path, logger);
+    if (fm.checkDirExist()) return true;
+    return fm.createDirectory();
+}

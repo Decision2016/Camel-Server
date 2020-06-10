@@ -14,8 +14,7 @@ add_library(common SHARED
         logger/Logger.cpp
         utils/BaseClass.cpp
         threads/Session.cpp
-        utils/Configer.cpp
         threads/Transporter.cpp
         camel_server.cpp)
 
-target_link_libraries(Camel_Server common -lpthread -lssl -lcrypto)
+target_link_libraries(Camel_Server common -lpthread -lssl -lcrypto -lini)

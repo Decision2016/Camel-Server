@@ -263,9 +263,8 @@ bool Session::authUser(const unsigned char *buffer) {
     return true;
 }
 
-void Session::setWorkPath(const char *_path) {
-    memcpy(path, _path, 32);
-    nowPath = "./" + std::string(_path);
+void Session::setWorkPath(std::string _path) {
+    nowPath = _path;
 }
 
 void Session::generateToken(unsigned char* out) {
