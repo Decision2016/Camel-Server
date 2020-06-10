@@ -112,7 +112,7 @@ int BaseClass::choosePort() {
 }
 
 bool BaseClass::checkPort(int port) {
-    if (port < 30000 || port > 65535) return false;
+    if (port < lowerPort || port > higherPort) return false;
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     sockaddr_in sin;
     memset(&sin, 0, sizeof(0));
@@ -125,4 +125,9 @@ bool BaseClass::checkPort(int port) {
     }
     close(socket_fd);
     return true;
+}
+
+void BaseClass::setPortLimit(int _low, int _high) {
+    lowerPort = _low;
+    higherPort = _high;
 }

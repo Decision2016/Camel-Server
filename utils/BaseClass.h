@@ -23,6 +23,7 @@ public:
     void setKey(unsigned char* _key);
     void setToken(unsigned char* _token);
     void setPort(int _port);
+    void setPortLimit(int _low, int _high);
     void aesEncrypt(unsigned char *in, unsigned char *out, int len);
     void aesDecrypt(unsigned char *in, unsigned char *out, int len);
     void sendStatusCode(unsigned long long _statusCode);
@@ -33,8 +34,8 @@ public:
     static void pushValue(unsigned char *destination, unsigned long long value, int bytes_len);
     static void popValue(unsigned char *origin, unsigned long long &value, int bytes_len);
     static void sha256(unsigned char* buffer,unsigned char *out, int length);
-    static int choosePort();
-    static bool checkPort(int port);
+    int choosePort();
+    bool checkPort(int port);
 private:
     AES_KEY aesKey;
     bool threadStatus = false;
@@ -43,6 +44,7 @@ private:
 
 protected:
     unsigned char key[KEY_LENGTH], token[TOKEN_LENGTH];
+    int lowerPort, higherPort;
     int connect_fd, listen_fd;
     int port;
     Logger *logger;

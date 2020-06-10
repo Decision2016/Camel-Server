@@ -12,7 +12,7 @@ const int PATH_SIZE = 255;
 char username[USERNAME_LENGTH];
 char password[PASSWORD_LENGTH];
 std::string _workPath;
-int _port;
+int _port, _low, _high;
 
 bool config(Logger *logger);
 
@@ -34,6 +34,7 @@ int main(int argc, char **argv) {
     }
 
     camel_server cs(username, password, logger, _port);
+    cs.setPortLimit(_low, _high);
     if (cs.setWorkPath(_workPath) && cs.trySocket()) {
         cs.serverInstance();
     }
@@ -66,6 +67,13 @@ bool config(Logger *logger) {
     _port = info["port"]["default"];
     if (_port == 0) {
         logger -> error("Must set listening port.");
+        return false;
+    }
+    _low = info["port"]["low"];
+    _high = info["port"]["high"];
+
+    if (_low == 0 || _high == 0) {
+        logger -> error("Must set port limit.");
         return false;
     }
 

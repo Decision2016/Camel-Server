@@ -40,6 +40,7 @@ void camel_server::serverInstance() {
             se.setUserInfo(username, password);
             se.setWorkPath(path);
             se.trySocket();
+            se.setPortLimit(lowerPort, higherPort);
             std::thread(&Session::threadInstance, &se).detach();
             pushValue(send_buffer, SERVER_FIRST_CONNECT, STATUS_LENGTH);
             pushValue(&send_buffer[STATUS_LENGTH], randPort, 2);
