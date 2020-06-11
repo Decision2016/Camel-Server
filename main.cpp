@@ -52,14 +52,14 @@ bool config(Logger *logger) {
 
     temporary = std::string(info["user"]["username"]);
     if (temporary.length() <= 0 || temporary.length() > USERNAME_LENGTH) {
-        logger -> error("Username is too long, it must between 0 and %d.", USERNAME_LENGTH);
+        logger -> error("Username is too long or too short, it must between 0 and %d.", USERNAME_LENGTH);
         return false;
     }
     memcpy(username, temporary.c_str(), temporary.length());
 
     temporary = std::string(info["user"]["password"]);
     if (temporary.length() <= 0 || temporary.length() > USERNAME_LENGTH) {
-        logger -> error("Password is too long, it must between 0 and %d.", PASSWORD_LENGTH);
+        logger -> error("Password is too long ot too short, it must between 0 and %d.", PASSWORD_LENGTH);
         return false;
     }
     memcpy(password, temporary.c_str(), temporary.length());

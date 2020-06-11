@@ -12,8 +12,6 @@ Session::~Session() {
     if (tp) {
         tp -> stopThread();
     }
-
-    close(listen_fd);
 }
 
 void Session::setUserInfo(char *_username, char *_password) {
@@ -158,13 +156,20 @@ void Session::threadInstance() {
     unsigned long long statusCode, length;
     unsigned char _token[TOKEN_LENGTH];
     unsigned char test1[BUFFER_LENGTH], test2[BUFFER_LENGTH];
+
+    logger -> success("Camel session created success, object is %d.", this);
+
     socket_fd = accept(listen_fd, (sockaddr*)nullptr, nullptr);
     setConnect(socket_fd);
-
     while (true) {
         n = recv(connect_fd, recv_buffer, BUFFER_LENGTH, 0);
         if (n == -1) continue;
+        if (n == 0) {
+            logger -> info("Socket client break connection, close session thread.");
+            break;
+        }
         popValue(recv_buffer, statusCode, STATUS_LENGTH);
+        logger -> info("Receive client status Code is: %d", statusCode);
 
         if (statusCode == SECOND_CONNECT) {
             logger->info("Received authorized request, start auth user.");
@@ -179,9 +184,14 @@ void Session::threadInstance() {
                 pushValue(buffer, filePort, 2);
                 memcpy(&buffer[2], _token, 32);
                 aesEncrypt(buffer, &send_buffer[2], 34);
-                send(connect_fd, send_buffer, 50, 0);
+                send(connect_fd, send_buffer, 50,  0);
                 fileManage();
                 break;
+            }
+            else {
+                logger -> error("Receive username or password is wrong.");
+                sendStatusCode(SERVER_PASS_ERROR);
+                continue;
             }
         }
     }
@@ -212,15 +222,19 @@ void Session::sendDirInfo() {
     index = nxtLen;
 
     while (true) {
-        length = recv(connect_fd, recv_buffer, 4096, 0);
+        length = recv(connect_fd, recv_buffer, BUFFER_LENGTH, 0);
         if (length == -1) {
             continue;
         }
+
         aesDecrypt(recv_buffer, buffer, BUFFER_LENGTH);
         popValue(buffer, statusCode, STATUS_LENGTH);
+
+        logger -> info("Receive client status Code is: %d", statusCode);
+
         if (statusCode != RECEIVE_SUCCESS) break;
         if (index != infoLength) {
-            nxtLen = std::min(infoLength - index, 4080);
+            nxtLen = std::min(infoLength - index, (int)ONCE_MAX_LENGTH);
 
             pushValue(buffer, SERVER_DIR_INFO, STATUS_LENGTH);
             pushValue(&buffer[2], nxtLen, 2);
@@ -231,6 +245,7 @@ void Session::sendDirInfo() {
             index += nxtLen;
         }
         else {
+            logger -> success("Send directory information finish.");
             sendStatusCode(SERVER_INFO_END);
             break;
         }
@@ -242,7 +257,8 @@ int Session::startFileThread() {
     tp = new Transporter(filePort, logger);
     tp -> setKey(key);
     tp -> setToken(token);
-    tp -> trySocket();
+    bool tpStatus = tp -> trySocket();
+    logger -> info("Transport thread on port %d status is: %s", filePort, tpStatus ? "Success" : "Error");
     std::thread(&Transporter::threadInstance, tp).detach();
     return filePort;
 }
@@ -254,7 +270,11 @@ bool Session::authUser(const unsigned char *buffer) {
     if (result < 0) return false;
     memcpy(_username, plainText, USERNAME_LENGTH);
     memcpy(_password, &plainText[USERNAME_LENGTH], PASSWORD_LENGTH);
-    if (strcmp(username, _username) != 0 || strcmp(password, _password) != 0) return false;
+
+    int recvUsernameLength = strlen(username);
+    int recvPasswordLength = strlen(password);
+
+    if (memcmp(username, _username, recvUsernameLength) != 0 || memcmp(password, _password, recvPasswordLength) != 0) return false;
     setKey(&plainText[64]);
     return true;
 }

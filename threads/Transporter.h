@@ -15,7 +15,7 @@ public:
     Transporter(int _port, Logger *_logger);
     void threadInstance();
 private:
-    unsigned char recv_buffer[4096], send_buffer[4096], buffer[4096];
+    unsigned char recv_buffer[BUFFER_LENGTH], send_buffer[BUFFER_LENGTH], buffer[BUFFER_LENGTH];
 
     void recvFile(std::string &_destination, unsigned long long _current);
     void sendFile(std::string &_origin, unsigned long long _current);

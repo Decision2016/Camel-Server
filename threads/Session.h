@@ -23,7 +23,7 @@ public:
     void setUserInfo(char *_username, char *_password);
     void setWorkPath(std::string _path);
 private:
-    unsigned char recv_buffer[4096], send_buffer[4096], buffer[4096];
+    unsigned char recv_buffer[BUFFER_LENGTH], send_buffer[BUFFER_LENGTH], buffer[BUFFER_LENGTH];
     char username[USERNAME_LENGTH], password[PASSWORD_LENGTH];
     int dirLevel = 0;
     RSA *keyPair;

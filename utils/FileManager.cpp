@@ -13,7 +13,6 @@ bool FileManager::getDirInfo(std::string &infoString) {
     DIR *dir;
     struct dirent *ptr;
     std::string dirInfo, fileInfo;
-    int count = 0;
 
     if ((dir=opendir(path.c_str())) == nullptr)
     {
@@ -25,11 +24,8 @@ bool FileManager::getDirInfo(std::string &infoString) {
     fileInfo.clear();
 
     while ((ptr = readdir(dir)) != nullptr) {
-        if(count != 2) {
-            count++;
-            continue;
-        }
         std::string name(ptr->d_name);
+        if (name == ".." || name == ".") continue;
         if(ptr -> d_type == 4) {
             dirInfo += ("0/folder/" + name + ";");
         }

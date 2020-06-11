@@ -91,7 +91,7 @@ void BaseClass::pushValue(unsigned char *destination, unsigned long long value, 
 }
 
 void BaseClass::popValue(unsigned char *origin, unsigned long long &value, int bytes_len) {
-    value = 0;
+    value = 0ULL;
     for (int i = 0; i < bytes_len; i++) {
         value <<= 8;
         value |= origin[i];

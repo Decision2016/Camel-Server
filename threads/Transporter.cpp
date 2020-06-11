@@ -22,7 +22,7 @@ void Transporter::threadInstance() {
             break;
         }
 
-        length = recv(connect_fd, recv_buffer, 4096, 0);
+        length = recv(connect_fd, recv_buffer, BUFFER_LENGTH, 0);
 
         if (length == 0) break;
 
