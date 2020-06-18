@@ -14,9 +14,9 @@ Session::~Session() {
     }
 }
 
-void Session::setUserInfo(char *_username, char *_password) {
-    strcpy(username, _username);
-    strcpy(password, _password);
+void Session::setUserInfo(const std::string &_username, const std::string &_password) {
+    username = _username;
+    password = _password;
 }
 
 void Session::fileManage() {
@@ -271,10 +271,9 @@ bool Session::authUser(const unsigned char *buffer) {
     memcpy(_username, plainText, USERNAME_LENGTH);
     memcpy(_password, &plainText[USERNAME_LENGTH], PASSWORD_LENGTH);
 
-    int recvUsernameLength = strlen(username);
-    int recvPasswordLength = strlen(password);
-
-    if (memcmp(username, _username, recvUsernameLength) != 0 || memcmp(password, _password, recvPasswordLength) != 0) return false;
+    std::cout<<std::string(_username).length()<<" "<<username.length()<<std::endl;
+    std::cout<<std::string(_password).length()<<" "<<password.length()<<std::endl;
+    if (username != std::string(_username) || password != std::string(_password)) return false;
     setKey(&plainText[64]);
     return true;
 }
@@ -288,8 +287,8 @@ void Session::generateToken(unsigned char* out) {
     long long timestamp = time(nullptr);
     unsigned char *pos = buffer;
     i2d_RSAPublicKey(keyPair, &pos);
-    memcpy(buffer, username, 16);
-    memcpy(buffer, password, 16);
+    memcpy(buffer, username.c_str(), 16);
+    memcpy(buffer, password.c_str(), 16);
     pushValue(&buffer[302], timestamp, 8);
     sha256(buffer, out, 310);
 }

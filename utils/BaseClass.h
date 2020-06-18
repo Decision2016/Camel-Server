@@ -9,6 +9,7 @@
 #include <openssl/sha.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <unistd.h>
 
 #include "Logger.h"

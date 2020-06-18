@@ -4,10 +4,8 @@
 
 #include "camel_server.h"
 
-camel_server::camel_server(char *_username, char *_password, Logger *_logger, int _port): BaseClass(_port, _logger) {
-    strcpy(username, _username);
-    strcpy(password, _password);
-}
+camel_server::camel_server(std::string _username, std::string _password, Logger *_logger, int _port):
+    BaseClass(_port, _logger), username(_username), password(_password) {};
 
 void camel_server::serverInstance() {
     int socket_fd,length;

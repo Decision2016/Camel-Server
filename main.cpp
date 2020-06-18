@@ -9,9 +9,7 @@
 
 const int PATH_SIZE = 255;
 
-char username[USERNAME_LENGTH];
-char password[PASSWORD_LENGTH];
-std::string _workPath;
+std::string _username, _password, _workPath;
 int _port, _low, _high;
 
 bool config(Logger *logger);
@@ -33,7 +31,7 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    camel_server cs(username, password, logger, _port);
+    camel_server cs(_username, _password, logger, _port);
     cs.setPortLimit(_low, _high);
     if (cs.setWorkPath(_workPath) && cs.trySocket()) {
         cs.serverInstance();
@@ -45,24 +43,19 @@ int main(int argc, char **argv) {
 }
 
 bool config(Logger *logger) {
-    std::string temporary;
     INI::registry info("config.ini");
-    memset(username, 0, USERNAME_LENGTH);
-    memset(password, 0, PASSWORD_LENGTH);
 
-    temporary = std::string(info["user"]["username"]);
-    if (temporary.length() <= 0 || temporary.length() > USERNAME_LENGTH) {
+    _username = std::string(info["user"]["username"]);
+    if (_username.length() <= 0 || _username.length() > USERNAME_LENGTH) {
         logger -> error("Username is too long or too short, it must between 0 and %d.", USERNAME_LENGTH);
         return false;
     }
-    memcpy(username, temporary.c_str(), temporary.length());
 
-    temporary = std::string(info["user"]["password"]);
-    if (temporary.length() <= 0 || temporary.length() > USERNAME_LENGTH) {
+     _password = std::string(info["user"]["password"]);
+    if (_password.length() <= 0 || _password.length() > USERNAME_LENGTH) {
         logger -> error("Password is too long ot too short, it must between 0 and %d.", PASSWORD_LENGTH);
         return false;
     }
-    memcpy(password, temporary.c_str(), temporary.length());
 
     _port = info["port"]["default"];
     if (_port == 0) {

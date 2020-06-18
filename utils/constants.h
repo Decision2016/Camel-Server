@@ -13,8 +13,8 @@ const int KEY_LENGTH = 32;
 const int TOKEN_LENGTH = 32;
 const int IV_LENGTH = 16;
 const int AES_KEY_LENGTH = 256;
-const int BUFFER_LENGTH = 1024;
-const unsigned long long ONCE_MAX_LENGTH = 1008ULL;
+const int BUFFER_LENGTH = 1440;
+const unsigned long long ONCE_MAX_LENGTH = 1400ULL;
 
 const int REFRESH_DIR = 200;
 const int ENTER_DIR = 201;

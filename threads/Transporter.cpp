@@ -10,6 +10,7 @@ void Transporter::threadInstance() {
     int n,socket_fd;
     unsigned long long statusCode, length, current;
     socket_fd = accept(listen_fd, (sockaddr*)nullptr, nullptr);
+
     setConnect(socket_fd);
 
     if (connect_fd != -1) {
@@ -61,6 +62,7 @@ void Transporter::threadInstance() {
 }
 
 void Transporter::recvFile(std::string &_destination, unsigned long long _current) {
+    int one = 1;
     if (_current == 0) remove(_destination.c_str());
 
     sendStatusCode(SERVER_FILE_RECEIVE);
@@ -71,6 +73,7 @@ void Transporter::recvFile(std::string &_destination, unsigned long long _curren
 
     while (true) {
         n = recv(connect_fd, recv_buffer, BUFFER_LENGTH, 0);
+        setsockopt(connect_fd, IPPROTO_TCP, TCP_QUICKACK, (void*)one, sizeof(int));
 
         if (n == -1) continue;
 
@@ -102,7 +105,7 @@ void Transporter::recvFile(std::string &_destination, unsigned long long _curren
 }
 
 void Transporter::sendFile(std::string &_origin, unsigned long long _current) {
-    int n;
+    int n, one = 1;
     unsigned long long statusCode, len;
     unsigned long long current = _current, nxtLen;
     unsigned long long size = getFileSize(_origin);
@@ -117,6 +120,8 @@ void Transporter::sendFile(std::string &_origin, unsigned long long _current) {
 
     while (true) {
         n = recv(connect_fd, recv_buffer, BUFFER_LENGTH, 0);
+        setsockopt(connect_fd, IPPROTO_TCP, TCP_QUICKACK, (void*)one, sizeof(int));
+
         if (n == -1) {
             continue;
         }

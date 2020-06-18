@@ -20,11 +20,11 @@ public:
     Session(int port, RSA *_rsa, Logger *_logger);
     ~Session();
     void threadInstance();
-    void setUserInfo(char *_username, char *_password);
+    void setUserInfo(const std::string &_username, const std::string &_password);
     void setWorkPath(std::string _path);
 private:
     unsigned char recv_buffer[BUFFER_LENGTH], send_buffer[BUFFER_LENGTH], buffer[BUFFER_LENGTH];
-    char username[USERNAME_LENGTH], password[PASSWORD_LENGTH];
+    std::string username, password;
     int dirLevel = 0;
     RSA *keyPair;
     Transporter *tp = nullptr;

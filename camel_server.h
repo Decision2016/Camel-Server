@@ -16,13 +16,13 @@
 
 class camel_server: public BaseClass {
 public:
-    camel_server(char* _username, char* _password, Logger *_logger, int _port);
+    camel_server(std::string _username, std::string _password, Logger *_logger, int _port);
     void serverInstance();
     bool setWorkPath(std::string _path);
 private:
     unsigned char recv_buffer[BUFFER_LENGTH], send_buffer[BUFFER_LENGTH], buffer[BUFFER_LENGTH];
     std::string path = "./camel";
-    char username[USERNAME_LENGTH], password[PASSWORD_LENGTH];
+    std::string username, password;
 };
 
 

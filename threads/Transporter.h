@@ -6,9 +6,12 @@
 #define CAMEL_SERVER_TRANSPORTER_H
 
 #include <sys/stat.h>
+#include <netinet/tcp.h>
+#include <netinet/in.h>
 
 #include "BaseClass.h"
 #include "Logger.h"
+
 
 class Transporter: public BaseClass {
 public:
