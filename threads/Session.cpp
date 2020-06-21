@@ -157,8 +157,6 @@ void Session::threadInstance() {
     unsigned char _token[TOKEN_LENGTH];
     unsigned char test1[BUFFER_LENGTH], test2[BUFFER_LENGTH];
 
-    logger -> success("Camel session created success, object is %d.", this);
-
     socket_fd = accept(listen_fd, (sockaddr*)nullptr, nullptr);
     setConnect(socket_fd);
     while (true) {
@@ -169,7 +167,6 @@ void Session::threadInstance() {
             break;
         }
         popValue(recv_buffer, statusCode, STATUS_LENGTH);
-        logger -> info("Receive client status Code is: %d", statusCode);
 
         if (statusCode == SECOND_CONNECT) {
             logger->info("Received authorized request, start auth user.");
@@ -230,8 +227,6 @@ void Session::sendDirInfo() {
         aesDecrypt(recv_buffer, buffer, BUFFER_LENGTH);
         popValue(buffer, statusCode, STATUS_LENGTH);
 
-        logger -> info("Receive client status Code is: %d", statusCode);
-
         if (statusCode != RECEIVE_SUCCESS) break;
         if (index != infoLength) {
             nxtLen = std::min(infoLength - index, (int)ONCE_MAX_LENGTH);
@@ -270,9 +265,6 @@ bool Session::authUser(const unsigned char *buffer) {
     if (result < 0) return false;
     memcpy(_username, plainText, USERNAME_LENGTH);
     memcpy(_password, &plainText[USERNAME_LENGTH], PASSWORD_LENGTH);
-
-    std::cout<<std::string(_username).length()<<" "<<username.length()<<std::endl;
-    std::cout<<std::string(_password).length()<<" "<<password.length()<<std::endl;
     if (username != std::string(_username) || password != std::string(_password)) return false;
     setKey(&plainText[64]);
     return true;
