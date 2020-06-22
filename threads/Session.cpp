@@ -252,8 +252,10 @@ int Session::startFileThread() {
     tp -> setPortLimit(lowerPort, higherPort);
     int tpStatus = -1;
     while (tpStatus == -1) {
+        // avoid bind error
+        sleep(1);
         tpStatus = tp -> trySocket(true);
-        logger -> info("Trying choose port to listen...");
+        if (tpStatus == -1) logger -> info("Trying choose port to listen...");
     }
     std::thread(&Transporter::threadInstance, tp).detach();
     return tpStatus;
