@@ -34,9 +34,7 @@ void Session::fileManage() {
 
         switch (statusCode) {
             case REFRESH_DIR: {
-                logger -> info("Receive dir information request.");
                 sendDirInfo();
-                logger -> success("Send dir information successful.");
                 break;
             }
             case ENTER_DIR: {
@@ -240,7 +238,6 @@ void Session::sendDirInfo() {
             index += nxtLen;
         }
         else {
-            logger -> success("Send directory information finish.");
             sendStatusCode(SERVER_INFO_END);
             break;
         }
@@ -252,10 +249,14 @@ int Session::startFileThread() {
     tp = new Transporter(filePort, logger);
     tp -> setKey(key);
     tp -> setToken(token);
-    bool tpStatus = tp -> trySocket();
-    logger -> info("Transport thread on port %d status is: %s", filePort, tpStatus ? "Success" : "Error");
+    tp -> setPortLimit(lowerPort, higherPort);
+    int tpStatus = -1;
+    while (tpStatus == -1) {
+        tpStatus = tp -> trySocket(true);
+        logger -> info("Trying choose port to listen...");
+    }
     std::thread(&Transporter::threadInstance, tp).detach();
-    return filePort;
+    return tpStatus;
 }
 
 bool Session::authUser(const unsigned char *buffer) {

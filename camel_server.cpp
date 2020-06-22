@@ -27,7 +27,7 @@ void camel_server::serverInstance() {
             int res = 0;
             BIGNUM* bignum = BN_new();
             res = BN_set_word(bignum, RSA_F4);
-            res = RSA_generate_key_ex(keyPair, 2048, bignum, NULL);
+            res = RSA_generate_key_ex(keyPair, RSA_KEY_BIT_LENGTH, bignum, NULL);
 
             if (res != 1) {
                 logger->error("Some error occurred while generate RSA key pair.");
@@ -37,8 +37,8 @@ void camel_server::serverInstance() {
             Session se(randPort, keyPair, logger);
             se.setUserInfo(username, password);
             se.setWorkPath(path);
-            bool seStatus = se.trySocket();
-            logger -> info("Session thread socket status: %s", seStatus == true ? "success" : "error");
+            int seStatus = se.trySocket();
+            logger -> info("Session thread socket status: %s", seStatus != -1 ? "success" : "error");
             se.setPortLimit(lowerPort, higherPort);
             std::thread(&Session::threadInstance, &se).detach();
             pushValue(send_buffer, SERVER_FIRST_CONNECT, STATUS_LENGTH);
@@ -47,9 +47,9 @@ void camel_server::serverInstance() {
             long long timestamp = time(nullptr);
             unsigned char *pubKey = buffer;
             i2d_RSAPublicKey(keyPair, &pubKey);
-            pushValue(&buffer[270], timestamp, 8);
+            pushValue(&buffer[RSA_KEY_LENGTH], timestamp, 8);
             memcpy(&send_buffer[4], buffer, 278);
-            sha256(buffer, &send_buffer[282], 278);
+            sha256(buffer, &send_buffer[SIGN_START], 278);
 
             send(socket_fd, send_buffer, BUFFER_LENGTH, 0);
             logger -> success("One file transport thread start running on port %d", randPort);

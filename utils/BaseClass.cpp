@@ -6,13 +6,16 @@
 
 BaseClass::BaseClass(int _port, Logger *_logger): port(_port), logger(_logger) {}
 
-bool BaseClass::trySocket() {
+int BaseClass::trySocket(bool isRand) {
+    if (isRand) {
+        setPort(choosePort());
+    }
 
     sockaddr_in socketStruct;
 
     if ((listen_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
         logger -> error("An error occurred while create server.");
-        return false;
+        return -1;
     }
 
     memset(&socketStruct, 0, sizeof(sockaddr_in));
@@ -22,16 +25,17 @@ bool BaseClass::trySocket() {
 
     if (bind(listen_fd, (sockaddr*) &socketStruct, sizeof(sockaddr)) == -1) {
         logger -> error("An error occurred while bind port.");
-        return false;
+        return -1;
     }
 
     if (listen(listen_fd, 10) == -1) {
         logger -> error("An error occurred while listen socket.");
-        return false;
+        return -1;
     }
 
     logger -> info("Socket listener created successful on port %d", port);
-    return true;
+
+    return port;
 }
 
 void BaseClass::setConnect(int _connect_fd) {
@@ -112,19 +116,7 @@ int BaseClass::choosePort() {
 }
 
 bool BaseClass::checkPort(int port) {
-    if (port < lowerPort || port > higherPort) return false;
-    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-    sockaddr_in sin;
-    memset(&sin, 0, sizeof(0));
-    sin.sin_family = AF_INET;
-    sin.sin_port = port;
-    sin.sin_addr.s_addr = htonl(INADDR_ANY);
-    if (bind(socket_fd, (sockaddr*) &sin, sizeof(sockaddr)) < 0) {
-        close(socket_fd);
-        return false;
-    }
-    close(socket_fd);
-    return true;
+    return !(port < lowerPort || port > higherPort);
 }
 
 void BaseClass::setPortLimit(int _low, int _high) {

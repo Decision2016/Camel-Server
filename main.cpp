@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
 
     camel_server cs(_username, _password, logger, _port);
     cs.setPortLimit(_low, _high);
-    if (cs.setWorkPath(_workPath) && cs.trySocket()) {
+    if (cs.setWorkPath(_workPath) && cs.trySocket() != -1) {
         cs.serverInstance();
     }
     // todo: 进行网络环境检查

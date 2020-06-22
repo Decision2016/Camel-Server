@@ -19,7 +19,7 @@ class BaseClass {
 public:
     BaseClass(int _port, Logger* _logger);
 
-    bool trySocket();
+    int trySocket(bool isRand = false);
     void setConnect(int _connect_fd);
     void setKey(unsigned char* _key);
     void setToken(unsigned char* _token);

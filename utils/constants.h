@@ -14,6 +14,9 @@ const int TOKEN_LENGTH = 32;
 const int IV_LENGTH = 16;
 const int AES_KEY_LENGTH = 256;
 const int BUFFER_LENGTH = 1440;
+const int RSA_KEY_LENGTH = 270;
+const int RSA_KEY_BIT_LENGTH = 2048;
+const int SIGN_START = 282;
 const unsigned long long ONCE_MAX_LENGTH = 1400ULL;
 
 const int REFRESH_DIR = 200;
